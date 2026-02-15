@@ -6,9 +6,6 @@ if (!process.env.OPENAI_API_KEY) {
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: false,
-  // Handle SSL certificate issues in development
-  httpAgent: process.env.NODE_ENV === 'development' ? undefined : undefined,
 });
 
 export const VISION_MODEL = 'gpt-4o';
