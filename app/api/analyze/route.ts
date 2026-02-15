@@ -150,7 +150,6 @@ Return output strictly in this JSON format:
 
     // Step 2: Analyze ingredients and generate scores
     console.log('Step 2: Analyzing ingredients using European standards...');
-    const openai = getOpenAI();
     const scoringResponse = await openai.chat.completions.create({
       model: TEXT_MODEL,
       messages: [
