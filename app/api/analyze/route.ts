@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, VISION_MODEL, TEXT_MODEL } from '@/lib/openai';
+import { getOpenAI, VISION_MODEL, TEXT_MODEL } from '@/lib/openai';
 import { z } from 'zod';
 import type { AnalysisResult, VisionExtractionResult } from '@/types';
 
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Extract product info using Vision API
     console.log('Step 1: Identifying product and researching ingredients...');
+    const openai = getOpenAI();
     const visionResponse = await openai.chat.completions.create({
       model: VISION_MODEL,
       messages: [
@@ -149,6 +150,7 @@ Return output strictly in this JSON format:
 
     // Step 2: Analyze ingredients and generate scores
     console.log('Step 2: Analyzing ingredients using European standards...');
+    const openai = getOpenAI();
     const scoringResponse = await openai.chat.completions.create({
       model: TEXT_MODEL,
       messages: [
