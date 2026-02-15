@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --primary: #2C1810;
+  --secondary: #6B4423;
+  --accent: #A0785A;
+  --surface: #FAF8F5;
+  --surface-elevated: #FFFFFF;
+  --text-primary: #2C1810;
+  --text-secondary: #6B4423;
+  --border: #E8DED2;
+  --success: #4A7C59;
+  --warning: #D4A574;
+  --danger: #B85C50;
+}
+
+@theme inline {
+  --color-background: var(--surface);
+  --color-foreground: var(--text-primary);
+  --font-sans: 'Inter', var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improve touch targets for mobile */
+button, a, label {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Prevent text selection on interactive elements */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}

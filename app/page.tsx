@@ -1,0 +1,221 @@
+'use client';
+
+import { useState, useRef } from 'react';
+import Image from 'next/image';
+import ResultsDisplay from '@/components/ResultsDisplay';
+import type { AnalysisResult, AnalysisError } from '@/types';
+
+export default function Home() {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file (JPEG or PNG)');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelectedImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      setError(null);
+      setResult(null);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!selectedFile) return;
+
+    setIsAnalyzing(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorData = data as AnalysisError;
+        setError(errorData.details || errorData.error);
+        return;
+      }
+
+      setResult(data as AnalysisResult);
+    } catch (err) {
+      setError('Failed to analyze image. Please try again.');
+      console.error('Analysis error:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleReset = () => {
+    setSelectedImage(null);
+    setSelectedFile(null);
+    setResult(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--surface)' }}>
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+        {/* Simple Header */}
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2" style={{ color: 'var(--primary)' }}>
+            DermaIQ
+          </h1>
+          <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+            European Standard Cosmetic Analysis
+          </p>
+        </div>
+
+        {/* Main Card */}
+        <div className="bg-white rounded-lg border p-4 sm:p-6 mb-4 sm:mb-6" style={{ borderColor: 'var(--border)' }}>
+          {/* Upload Section */}
+          <div className="mb-4 sm:mb-6">
+            <label
+              htmlFor="image-upload"
+              className="block w-full cursor-pointer"
+            >
+              <div className="border-2 border-dashed rounded-lg p-6 sm:p-8 text-center transition-colors active:border-gray-400 hover:border-gray-400" style={{ borderColor: 'var(--border)' }}>
+                {selectedImage ? (
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="relative w-full mx-auto" style={{ maxWidth: '400px', aspectRatio: '4/3' }}>
+                      <Image
+                        src={selectedImage}
+                        alt="Product"
+                        fill
+                        className="object-contain rounded"
+                        quality={95}
+                        unoptimized
+                      />
+                    </div>
+                    <p className="text-xs truncate px-4" style={{ color: 'var(--text-secondary)' }}>
+                      {selectedFile?.name}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="py-6 sm:py-8">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-3 sm:mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
+                      <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <p className="font-semibold text-sm sm:text-base mb-1" style={{ color: 'var(--text-primary)' }}>
+                      Upload Product Image
+                    </p>
+                    <p className="text-xs sm:text-sm px-4" style={{ color: 'var(--text-secondary)' }}>
+                      Tap to select • JPEG or PNG • Max 5MB
+                    </p>
+                  </div>
+                )}
+              </div>
+            </label>
+            <input
+              ref={fileInputRef}
+              id="image-upload"
+              type="file"
+              accept="image/jpeg,image/png,image/jpg"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="mb-4 p-3 rounded text-xs sm:text-sm leading-relaxed" style={{ backgroundColor: '#FEF2F2', color: '#B85C50', border: '1px solid #FECACA' }}>
+              {error}
+            </div>
+          )}
+
+          {/* Buttons */}
+          {selectedImage && !result && (
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
+                className="flex-1 py-3 sm:py-3.5 px-4 rounded font-semibold text-sm sm:text-base text-white transition-colors disabled:opacity-50 active:scale-95"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                {isAnalyzing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    Analyzing...
+                  </span>
+                ) : (
+                  'Analyze Product'
+                )}
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={isAnalyzing}
+                className="px-6 py-3 sm:py-3.5 rounded font-medium text-sm sm:text-base transition-colors active:scale-95"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Results */}
+        {result && (
+          <div>
+            <ResultsDisplay result={result} />
+            <div className="text-center mt-4 sm:mt-6">
+              <button
+                onClick={handleReset}
+                className="w-full sm:w-auto px-6 py-3 rounded font-semibold text-sm sm:text-base text-white active:scale-95 transition-transform"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                Analyze Another Product
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isAnalyzing && (
+          <div className="text-center py-8 sm:py-12">
+            <div className="inline-block w-10 h-10 sm:w-12 sm:h-12 border-4 rounded-full animate-spin mb-3 sm:mb-4" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--primary)' }}></div>
+            <p className="text-xs sm:text-sm px-4" style={{ color: 'var(--text-secondary)' }}>
+              Researching ingredients and analyzing...
+            </p>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="text-center mt-6 sm:mt-8 text-xs px-4" style={{ color: 'var(--text-secondary)' }}>
+          <p>Based on European (EU) cosmetic safety standards</p>
+        </div>
+      </div>
+    </div>
+  );
+}
