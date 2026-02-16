@@ -6,7 +6,6 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import type { Provider } from 'next-auth/providers';
 
-// Build providers list dynamically
 const providers: Provider[] = [
   Credentials({
     name: 'Email',
@@ -15,44 +14,52 @@ const providers: Provider[] = [
       password: { label: 'Password', type: 'password' },
     },
     async authorize(credentials) {
-      if (!credentials?.email || !credentials?.password) {
-        return null;
+      const email = credentials?.email as string | undefined;
+      const password = credentials?.password as string | undefined;
+
+      if (!email || !password) {
+        throw new Error('Please enter both email and password');
       }
 
-      const user = await prisma.user.findUnique({
-        where: {
-          email: credentials.email as string,
-        },
-      });
+      try {
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
 
-      if (!user || !user.password) {
-        return null;
+        if (!user || !user.password) {
+          throw new Error('No account found with this email');
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+          throw new Error('Incorrect password');
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        };
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('account')) {
+          throw error;
+        }
+        console.error('Auth error:', error);
+        throw new Error('Authentication failed. Please try again.');
       }
-
-      const isPasswordValid = await bcrypt.compare(
-        credentials.password as string,
-        user.password
-      );
-
-      if (!isPasswordValid) {
-        return null;
-      }
-
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      };
     },
   }),
 ];
 
-// Only add Google if credentials are configured
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+export const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+if (googleEnabled) {
   providers.push(
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     })
   );
 }

@@ -13,10 +13,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Validate input
     const validatedData = SignupSchema.parse(body);
     
-    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: validatedData.email },
     });
@@ -28,10 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Hash password
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
     
-    // Create user
     const user = await prisma.user.create({
       data: {
         name: validatedData.name,
@@ -58,9 +54,10 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.error('Signup error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Signup error:', errorMessage, error);
     return NextResponse.json(
-      { error: 'Failed to create user' },
+      { error: `Failed to create user: ${errorMessage}` },
       { status: 500 }
     );
   }
