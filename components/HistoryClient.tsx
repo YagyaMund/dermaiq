@@ -4,6 +4,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 
+interface IngredientItem {
+  name: string;
+  benefit?: string;
+  concern?: string;
+}
+
+interface IngredientCategory {
+  category: string;
+  items: IngredientItem[];
+}
+
 interface HistoryItem {
   id: string;
   productName: string;
@@ -11,8 +22,8 @@ interface HistoryItem {
   safetyScore: number;
   organicType: string;
   createdAt: string;
-  positiveIngredients: Array<{ name: string; benefit: string }>;
-  negativeIngredients: Array<{ name: string; concern: string }>;
+  positiveIngredients: unknown;
+  negativeIngredients: unknown;
   verdict: string;
 }
 
@@ -21,13 +32,34 @@ interface Props {
   userName: string;
 }
 
+function flattenIngredients(data: unknown): IngredientItem[] {
+  if (!Array.isArray(data)) return [];
+  if (data.length === 0) return [];
+  // Grouped format: [{category, items: [...]}]
+  if (data[0] && typeof data[0] === 'object' && 'category' in data[0] && 'items' in data[0]) {
+    return (data as IngredientCategory[]).flatMap((g) => g.items);
+  }
+  // Flat format: [{name, benefit/concern}]
+  return data as IngredientItem[];
+}
+
 export default function HistoryClient({ history, userName }: Props) {
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
 
   const getScoreColor = (score: number) => {
-    if (score >= 75) return '#4F7C5E';
-    if (score >= 50) return '#B8860B';
+    if (score >= 80) return '#2D6A4F';
+    if (score >= 60) return '#4A7C59';
+    if (score >= 40) return '#D4A574';
+    if (score >= 20) return '#C07040';
     return '#B85C50';
+  };
+
+  const getScoreLabel = (score: number): string => {
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Fair';
+    if (score >= 20) return 'Poor';
+    return 'Very Poor';
   };
 
   const formatDate = (dateString: string) => {
@@ -66,7 +98,6 @@ export default function HistoryClient({ history, userName }: Props) {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
             Analysis History
@@ -76,7 +107,6 @@ export default function HistoryClient({ history, userName }: Props) {
           </p>
         </div>
 
-        {/* Empty State */}
         {history.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🔬</div>
@@ -96,54 +126,64 @@ export default function HistoryClient({ history, userName }: Props) {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {history.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setSelectedItem(item)}
-                className="bg-white border rounded-lg p-4 text-left hover:shadow-lg transition-all"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                {/* Product Name */}
-                <h3 className="font-semibold mb-2 line-clamp-2" style={{ color: 'var(--text-primary)' }}>
-                  {item.productName}
-                </h3>
-
-                {/* Date */}
-                <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
-                  {formatDate(item.createdAt)}
-                </p>
-
-                {/* Scores */}
-                <div className="flex gap-2 mb-3">
-                  <div className="flex-1 text-center p-2 rounded" style={{ backgroundColor: 'var(--surface)' }}>
-                    <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-                      Quality
+            {history.map((item) => {
+              const overall = Math.round((item.qualityScore + item.safetyScore) / 2);
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedItem(item)}
+                  className="bg-white border rounded-lg p-4 text-left hover:shadow-lg transition-all"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  <h3 className="font-semibold mb-2 line-clamp-2" style={{ color: 'var(--text-primary)' }}>
+                    {item.productName}
+                  </h3>
+                  <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+                    {formatDate(item.createdAt)}
+                  </p>
+                  <div className="flex gap-2 mb-3">
+                    <div className="flex-1 text-center p-2 rounded" style={{ backgroundColor: 'var(--surface)' }}>
+                      <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Quality</div>
+                      <div className="text-lg font-bold" style={{ color: getScoreColor(item.qualityScore) }}>
+                        {item.qualityScore}
+                      </div>
+                      <div className="text-xs" style={{ color: getScoreColor(item.qualityScore) }}>
+                        {getScoreLabel(item.qualityScore)}
+                      </div>
                     </div>
-                    <div className="text-lg font-bold" style={{ color: getScoreColor(item.qualityScore) }}>
-                      {item.qualityScore}
+                    <div className="flex-1 text-center p-2 rounded" style={{ backgroundColor: 'var(--surface)' }}>
+                      <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Safety</div>
+                      <div className="text-lg font-bold" style={{ color: getScoreColor(item.safetyScore) }}>
+                        {item.safetyScore}
+                      </div>
+                      <div className="text-xs" style={{ color: getScoreColor(item.safetyScore) }}>
+                        {getScoreLabel(item.safetyScore)}
+                      </div>
+                    </div>
+                    <div className="flex-1 text-center p-2 rounded" style={{ backgroundColor: 'var(--surface)' }}>
+                      <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Overall</div>
+                      <div className="text-lg font-bold" style={{ color: getScoreColor(overall) }}>
+                        {overall}
+                      </div>
+                      <div className="text-xs" style={{ color: getScoreColor(overall) }}>
+                        {getScoreLabel(overall)}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex-1 text-center p-2 rounded" style={{ backgroundColor: 'var(--surface)' }}>
-                    <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-                      Safety
-                    </div>
-                    <div className="text-lg font-bold" style={{ color: getScoreColor(item.safetyScore) }}>
-                      {item.safetyScore}
-                    </div>
+                  <div className="text-xs px-2 py-1 rounded inline-block" style={{
+                    backgroundColor: item.organicType === 'Organic' ? '#E8F5E9' : '#FFEBEE',
+                    color: item.organicType === 'Organic' ? '#2D6A4F' : '#B85C50',
+                  }}>
+                    {item.organicType}
                   </div>
-                </div>
-
-                {/* Organic Type */}
-                <div className="text-xs px-2 py-1 rounded inline-block" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-secondary)' }}>
-                  {item.organicType}
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Modal for detailed view */}
+      {/* Detail Modal */}
       {selectedItem && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
@@ -153,102 +193,112 @@ export default function HistoryClient({ history, userName }: Props) {
             className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
             <button
               onClick={() => setSelectedItem(null)}
               className="float-right text-2xl"
               style={{ color: 'var(--text-secondary)' }}
             >
-              ×
+              &times;
             </button>
 
-            {/* Product Name */}
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
               {selectedItem.productName}
             </h2>
-
-            {/* Date */}
             <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
               Analyzed {formatDate(selectedItem.createdAt)}
             </p>
 
-            {/* Scores */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 rounded-lg" style={{ background: 'linear-gradient(135deg, #F5E6D3 0%, #E8D4BA 100%)' }}>
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="text-center p-4 rounded-lg" style={{ backgroundColor: '#F5F1EB' }}>
                 <div className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Quality</div>
                 <div className="text-3xl font-bold" style={{ color: getScoreColor(selectedItem.qualityScore) }}>
                   {selectedItem.qualityScore}
                 </div>
+                <div className="text-xs font-medium mt-1" style={{ color: getScoreColor(selectedItem.qualityScore) }}>
+                  {getScoreLabel(selectedItem.qualityScore)}
+                </div>
               </div>
-              <div className="text-center p-4 rounded-lg" style={{ background: 'linear-gradient(135deg, #E8D4BA 0%, #DCC5A8 100%)' }}>
+              <div className="text-center p-4 rounded-lg" style={{ backgroundColor: '#F5F1EB' }}>
                 <div className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Safety</div>
                 <div className="text-3xl font-bold" style={{ color: getScoreColor(selectedItem.safetyScore) }}>
                   {selectedItem.safetyScore}
                 </div>
+                <div className="text-xs font-medium mt-1" style={{ color: getScoreColor(selectedItem.safetyScore) }}>
+                  {getScoreLabel(selectedItem.safetyScore)}
+                </div>
               </div>
-              <div className="text-center p-4 rounded-lg" style={{ background: 'linear-gradient(135deg, #DCC5A8 0%, #D0B696 100%)' }}>
+              <div className="text-center p-4 rounded-lg" style={{ backgroundColor: '#F5F1EB' }}>
                 <div className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Type</div>
-                <div className="text-sm font-semibold mt-2" style={{ color: 'var(--primary)' }}>
+                <div className="text-sm font-semibold mt-2" style={{
+                  color: selectedItem.organicType === 'Organic' ? '#2D6A4F' : '#B85C50',
+                }}>
                   {selectedItem.organicType}
                 </div>
               </div>
             </div>
 
-            {/* Verdict */}
             <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--surface)' }}>
               <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                Overall Verdict
+                Overall Assessment
               </h3>
               <p style={{ color: 'var(--text-secondary)' }}>{selectedItem.verdict}</p>
             </div>
 
-            {/* Good Ingredients */}
-            {selectedItem.positiveIngredients.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-                  Good Ingredients
-                </h3>
-                <div className="space-y-2">
-                  {selectedItem.positiveIngredients.map((ingredient, idx) => (
-                    <div key={idx} className="flex gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--surface)' }}>
-                      <span className="text-green-600 flex-shrink-0">✓</span>
-                      <div>
-                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {ingredient.name}
-                        </div>
-                        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                          {ingredient.benefit}
+            {(() => {
+              const positives = flattenIngredients(selectedItem.positiveIngredients);
+              return positives.length > 0 ? (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-3" style={{ color: '#4A7C59' }}>
+                    What&apos;s Good In It
+                  </h3>
+                  <div className="space-y-2">
+                    {positives.map((ingredient, idx) => (
+                      <div key={idx} className="flex gap-2 p-3 rounded-lg" style={{ backgroundColor: '#F1F8E9' }}>
+                        <span className="flex-shrink-0" style={{ color: '#4A7C59' }}>✓</span>
+                        <div>
+                          <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                            {ingredient.name}
+                          </div>
+                          {ingredient.benefit && (
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                              {ingredient.benefit}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null;
+            })()}
 
-            {/* Watch Out For */}
-            {selectedItem.negativeIngredients.length > 0 && (
-              <div>
-                <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-                  Ingredients to Watch Out For
-                </h3>
-                <div className="space-y-2">
-                  {selectedItem.negativeIngredients.map((ingredient, idx) => (
-                    <div key={idx} className="flex gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--surface)' }}>
-                      <span className="text-orange-600 flex-shrink-0">⚠</span>
-                      <div>
-                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {ingredient.name}
-                        </div>
-                        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                          {ingredient.concern}
+            {(() => {
+              const negatives = flattenIngredients(selectedItem.negativeIngredients);
+              return negatives.length > 0 ? (
+                <div>
+                  <h3 className="font-semibold mb-3" style={{ color: '#B85C50' }}>
+                    What to Watch Out For
+                  </h3>
+                  <div className="space-y-2">
+                    {negatives.map((ingredient, idx) => (
+                      <div key={idx} className="flex gap-2 p-3 rounded-lg" style={{ backgroundColor: '#FFF3E0' }}>
+                        <span className="flex-shrink-0" style={{ color: '#B85C50' }}>⚠</span>
+                        <div>
+                          <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                            {ingredient.name}
+                          </div>
+                          {ingredient.concern && (
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                              {ingredient.concern}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null;
+            })()}
           </div>
         </div>
       )}

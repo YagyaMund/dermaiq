@@ -10,7 +10,6 @@ export default async function HistoryPage() {
     redirect('/login');
   }
 
-  // Fetch user's analysis history
   const analyses = await prisma.analysis.findMany({
     where: {
       userId: session.user.id,
@@ -18,10 +17,9 @@ export default async function HistoryPage() {
     orderBy: {
       createdAt: 'desc',
     },
-    take: 50, // Limit to 50 most recent
+    take: 50,
   });
 
-  // Transform data for client
   const historyData = analyses.map((analysis) => ({
     id: analysis.id,
     productName: analysis.productName,
@@ -29,8 +27,8 @@ export default async function HistoryPage() {
     safetyScore: analysis.safetyScore,
     organicType: analysis.organicType,
     createdAt: analysis.createdAt.toISOString(),
-    positiveIngredients: analysis.positiveIngredients as Array<{ name: string; benefit: string }>,
-    negativeIngredients: analysis.negativeIngredients as Array<{ name: string; concern: string }>,
+    positiveIngredients: analysis.positiveIngredients as unknown,
+    negativeIngredients: analysis.negativeIngredients as unknown,
     verdict: analysis.verdict,
   }));
 
