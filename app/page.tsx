@@ -85,7 +85,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface)' }}>
-      {/* Top Navigation */}
+      {/* Top Bar */}
       <div className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'white' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
@@ -96,13 +96,6 @@ export default function Home() {
               <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading...</span>
             ) : session ? (
               <>
-                <Link
-                  href="/history"
-                  className="text-sm px-4 py-2 rounded-lg border"
-                  style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-                >
-                  History
-                </Link>
                 <span className="text-sm hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>
                   {session.user?.name || session.user?.email}
                 </span>
@@ -143,7 +136,6 @@ export default function Home() {
 
         {/* Main Card */}
         <div className="bg-white rounded-lg border p-4 sm:p-6 mb-4 sm:mb-6" style={{ borderColor: 'var(--border)' }}>
-          {/* Image Preview */}
           {selectedImage ? (
             <div className="mb-4 sm:mb-6">
               <div className="border-2 border-dashed rounded-lg p-4 text-center" style={{ borderColor: 'var(--border)' }}>
@@ -163,14 +155,9 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            /* Upload & Camera Buttons */
             <div className="mb-4 sm:mb-6">
               <div className="grid grid-cols-2 gap-3">
-                {/* Upload from Gallery */}
-                <label
-                  htmlFor="image-upload"
-                  className="cursor-pointer"
-                >
+                <label htmlFor="image-upload" className="cursor-pointer">
                   <div
                     className="border-2 border-dashed rounded-lg p-6 sm:p-8 text-center transition-colors hover:border-gray-400 active:border-gray-400"
                     style={{ borderColor: 'var(--border)' }}
@@ -180,28 +167,13 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>
-                      Upload Photo
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      From gallery
-                    </p>
+                    <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>Upload Photo</p>
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>From gallery</p>
                   </div>
                 </label>
-                <input
-                  ref={fileInputRef}
-                  id="image-upload"
-                  type="file"
-                  accept="image/jpeg,image/png,image/jpg"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
+                <input ref={fileInputRef} id="image-upload" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleImageSelect} className="hidden" />
 
-                {/* Take Photo with Camera */}
-                <label
-                  htmlFor="camera-capture"
-                  className="cursor-pointer"
-                >
+                <label htmlFor="camera-capture" className="cursor-pointer">
                   <div
                     className="border-2 border-dashed rounded-lg p-6 sm:p-8 text-center transition-colors hover:border-gray-400 active:border-gray-400"
                     style={{ borderColor: 'var(--border)' }}
@@ -212,23 +184,11 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                     </div>
-                    <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>
-                      Take Photo
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Use camera
-                    </p>
+                    <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>Take Photo</p>
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Use camera</p>
                   </div>
                 </label>
-                <input
-                  ref={cameraInputRef}
-                  id="camera-capture"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
+                <input ref={cameraInputRef} id="camera-capture" type="file" accept="image/*" capture="environment" onChange={handleImageSelect} className="hidden" />
               </div>
               <p className="text-xs text-center mt-3 px-4" style={{ color: 'var(--text-secondary)' }}>
                 JPEG or PNG &bull; Max 5MB &bull; Cosmetic products only
@@ -236,14 +196,12 @@ export default function Home() {
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <div className="mb-4 p-3 rounded text-xs sm:text-sm leading-relaxed" style={{ backgroundColor: '#FEF2F2', color: '#B85C50', border: '1px solid #FECACA' }}>
               {error}
             </div>
           )}
 
-          {/* Action Buttons */}
           {selectedImage && !result && (
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
@@ -276,7 +234,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Results */}
         {result && (
           <div>
             <ResultsDisplay result={result} />
@@ -292,7 +249,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Loading State */}
         {isAnalyzing && (
           <div className="text-center py-8 sm:py-12">
             <div className="inline-block w-10 h-10 sm:w-12 sm:h-12 border-4 rounded-full animate-spin mb-3 sm:mb-4" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--primary)' }}></div>
@@ -305,9 +261,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Footer */}
         <div className="text-center mt-6 sm:mt-8 text-xs px-4" style={{ color: 'var(--text-secondary)' }}>
-          <p>Analyzed using EU Cosmetics Regulation (EC) No 1223/2009</p>
+          <p>Scored using EU Cosmetics Regulation (EC) No 1223/2009 penalty system</p>
         </div>
       </div>
     </div>

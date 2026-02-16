@@ -18,6 +18,7 @@ const IngredientItemSchema = z.object({
   name: z.string(),
   benefit: z.string().optional(),
   concern: z.string().optional(),
+  risk_level: z.enum(['green', 'yellow', 'orange', 'red']).optional(),
 });
 
 const IngredientCategorySchema = z.object({
@@ -25,18 +26,22 @@ const IngredientCategorySchema = z.object({
   items: z.array(IngredientItemSchema),
 });
 
+const HealthierAlternativeSchema = z.object({
+  product_name: z.string(),
+  brand: z.string(),
+  estimated_score: z.number(),
+  reason: z.string(),
+}).optional();
+
 const ScoringResultSchema = z.object({
   product_name: z.string(),
   product_type: z.string(),
   detected_ingredients: z.array(z.string()),
-  scores: z.object({
-    quality: z.number().min(0).max(100),
-    safety: z.number().min(0).max(100),
-    organic: z.enum(['Organic', 'Synthetic', 'Unknown']),
-  }),
+  score: z.number().min(0).max(100),
   positive_ingredients: z.array(IngredientCategorySchema),
   negative_ingredients: z.array(IngredientCategorySchema),
   verdict: z.string(),
+  healthier_alternative: HealthierAlternativeSchema.nullable().optional(),
 });
 
 export const maxDuration = 30;
@@ -165,8 +170,11 @@ Return STRICTLY in this JSON format:
       );
     }
 
-    // Step 2: Analyze ingredients using strict European standards
+    // Step 2: Analyze ingredients using strict European standards with penalty-based scoring
     console.log('Step 2: Analyzing ingredients using European standards...');
+    const ingredientCount = visionData.ingredients.length;
+    const isLowIngredientProduct = ingredientCount <= 3;
+
     const scoringResponse = await openai.chat.completions.create({
       model: TEXT_MODEL,
       messages: [
@@ -174,27 +182,53 @@ Return STRICTLY in this JSON format:
           role: 'system',
           content: `You are DermaIQ's European Cosmetic Safety Analyst.
 
-You evaluate cosmetic products using STRICT European Union regulatory standards, specifically:
+You evaluate cosmetic products using STRICT European Union regulatory standards:
 - EU Cosmetics Regulation (EC) No 1223/2009
 - SCCS (Scientific Committee on Consumer Safety) opinions
-- EU Annex II (Prohibited Substances list — over 1,600 banned ingredients)
+- EU Annex II (Prohibited Substances — 1,600+ banned ingredients)
 - EU Annex III (Restricted Substances with conditions)
 - EU Annex IV-VI (Permitted colorants, preservatives, UV filters with limits)
-- CLP Regulation for allergen labeling (26 fragrance allergens that must be declared)
+- CLP Regulation for allergen labeling (26 fragrance allergens)
 
-SCORING GUIDE (be strict and consistent):
-- 0-20: Very Poor — Contains multiple banned/severely restricted EU substances
-- 21-40: Poor — Contains several concerning ingredients (e.g. certain parabens, formaldehyde releasers, strong irritants)
-- 41-60: Fair — Contains some synthetic ingredients of concern (sulfates, PEGs, phenoxyethanol, synthetic fragrances) but nothing banned
-- 61-80: Good — Mostly clean formula with minimal concerns, few synthetics
-- 81-100: Excellent — Very clean, natural/organic formula with no concerning ingredients
+INGREDIENT RISK CLASSIFICATION:
+Classify each ingredient into one of 4 risk levels:
+- GREEN (risk-free): Safe, beneficial, no known concerns under EU standards
+- YELLOW (low risk): Generally safe but has minor concerns (e.g., mild allergen potential, mild irritant)
+- ORANGE (moderate risk): Notable concerns — restricted in EU, potential sensitizer, controversial preservative, PEGs, certain parabens, synthetic fragrances
+- RED (hazardous): Banned or severely restricted in EU, known carcinogen, confirmed endocrine disruptor, formaldehyde releaser
 
-Most mass-market international brands (Neutrogena, Nivea, Dove, L'Oreal, etc.) should score 35-55.
-Pharmacy/dermatology brands (CeraVe, La Roche-Posay, Bioderma) should score 50-70.
-Clean/organic European brands (Weleda, Dr. Hauschka, Pai) should score 75-90.
+PENALTY-BASED SCORING SYSTEM (YOU MUST FOLLOW THIS EXACTLY):
+
+Start from 100 points.
+
+CASE 1 — Product contains ONLY green and yellow ingredients (no orange or red):
+The score floor is 50 (score cannot go below 50).
+Apply these penalties per ingredient:
+  • -10 points if the ingredient is potentially carcinogenic or an endocrine disruptor
+  • -7 points if the ingredient has MULTIPLE risks (e.g., allergen + irritant, or irritant + pollutant)
+  • -2 points if the ingredient has only ONE risk (allergen OR irritant OR other health effect OR pollutant)
+
+CASE 2 — Product contains orange or red ingredients:
+The CEILING is determined by the worst ingredient:
+  • If ANY red (hazardous) ingredient exists → score ceiling is 24 (score range: 0-24)
+  • If no red but ANY orange (moderate risk) exists → score ceiling is 49 (score range: 0-49)
+
+Then apply penalties per ingredient:
+  • -12 pts for a RED carcinogen or endocrine disruptor
+  • -8 pts for a RED allergen, irritant, other health effect, or pollutant
+  • -6 pts for an ORANGE carcinogen or endocrine disruptor
+  • -4 pts for an ORANGE allergen, irritant, other health effect, or pollutant
+  • -3 pts for a YELLOW carcinogen or endocrine disruptor
+  • -2 pts for a YELLOW allergen, irritant, other health effect, or pollutant
+If an ingredient has multiple risks, apply ONLY the highest penalty (not cumulative).
+
+SPECIAL RULE — Few ingredients (3 or fewer total):
+If the product has 3 or fewer ingredients, the penalties are MORE SEVERE because each risky ingredient represents a larger share. Multiply all penalties by 1.5x.
+
+Score cannot go below 0.
 
 INGREDIENT GROUPING:
-Group positive and negative ingredients into everyday categories that regular people understand:
+Group positive and negative ingredients into everyday categories:
 - Moisturizers & Hydrators
 - Vitamins & Antioxidants
 - Soothing & Calming Agents
@@ -210,41 +244,46 @@ Group positive and negative ingredients into everyday categories that regular pe
 - Colorants & Dyes
 - pH Adjusters & Buffers
 
-Use ONLY the categories that apply. Do NOT include empty categories.`,
+Only include categories that have ingredients. Skip empty categories.
+
+HEALTHIER ALTERNATIVE:
+If the final score is below 50, you MUST suggest a healthier alternative product in the same category (e.g., if analyzing a moisturizer, suggest a healthier moisturizer). The alternative should:
+- Be a real, widely available product
+- Have a cleaner ingredient profile
+- Be in a similar price range if possible
+- Provide an estimated score based on its known ingredients`,
         },
         {
           role: 'user',
-          content: `Analyze this ${visionData.product_type} product using STRICT EU cosmetic safety standards:
+          content: `Analyze this ${visionData.product_type} product using the PENALTY-BASED EU scoring system:
 
 Product: ${visionData.product_name}
 Type: ${visionData.product_type}
+Total Ingredient Count: ${ingredientCount}${isLowIngredientProduct ? ' (FEW INGREDIENTS — apply 1.5x penalty multiplier)' : ''}
 Full Ingredient List (INCI): ${visionData.ingredients.join(', ')}
 
-Provide a thorough analysis with:
+You MUST:
+1. Classify each ingredient as green/yellow/orange/red
+2. Calculate the score using the exact penalty system described
+3. Group positive ingredients by category with simple names and benefits
+4. Group negative ingredients by category with simple names, risk levels, and concerns
+5. Write an honest 2-3 sentence verdict for regular consumers
+6. If score < 50, suggest a healthier alternative product
 
-1. QUALITY SCORE (0-100): Based on formulation quality, ingredient selection, efficacy. Be strict per EU standards.
-2. SAFETY SCORE (0-100): Based on EU safety regulations, irritant potential, allergen risk, endocrine disruption potential.
-3. CLASSIFICATION: "Organic" (95%+ natural/organic certified ingredients) or "Synthetic" (contains significant synthetic ingredients). No middle ground — be honest.
-4. DETECTED INGREDIENTS: Return the full list of ingredients as detected/researched.
-5. POSITIVE INGREDIENTS: Group GOOD ingredients by category. Use SIMPLE everyday names (e.g. "Vitamin E" not "Tocopheryl Acetate", "Shea Butter" not "Butyrospermum Parkii"). Explain benefits in one simple sentence anyone can understand.
-6. NEGATIVE INGREDIENTS: Group CONCERNING ingredients by category. Use SIMPLE everyday names with the technical name in brackets if helpful (e.g. "Sulfates [SLS/SLES]"). Explain concerns in one simple sentence — like you're telling a friend why to be careful.
-7. VERDICT: 2-3 sentences summarizing the product for a regular consumer. Be honest and direct.
+Use SIMPLE everyday names (e.g. "Vitamin E" not "Tocopheryl Acetate", "Shea Butter" not "Butyrospermum Parkii").
+For negative ingredients, include the technical name in brackets (e.g. "Sulfates [SLS/SLES]").
 
 Return STRICTLY in this JSON format:
 {
   "product_name": "${visionData.product_name}",
   "product_type": "${visionData.product_type}",
   "detected_ingredients": ["ingredient1", "ingredient2", ...],
-  "scores": {
-    "quality": <number 0-100>,
-    "safety": <number 0-100>,
-    "organic": "Organic" | "Synthetic"
-  },
+  "score": <number 0-100, calculated using the penalty system>,
   "positive_ingredients": [
     {
       "category": "Moisturizers & Hydrators",
       "items": [
-        { "name": "Simple everyday name", "benefit": "Simple one-line explanation" }
+        { "name": "Simple name", "benefit": "Simple explanation", "risk_level": "green" }
       ]
     }
   ],
@@ -252,16 +291,22 @@ Return STRICTLY in this JSON format:
     {
       "category": "Fragrances & Scents",
       "items": [
-        { "name": "Simple name [Technical name]", "concern": "Simple one-line explanation" }
+        { "name": "Simple name [Technical name]", "concern": "Simple explanation", "risk_level": "orange" }
       ]
     }
   ],
-  "verdict": "Honest 2-3 sentence summary for regular consumers"
+  "verdict": "Honest 2-3 sentence summary",
+  "healthier_alternative": ${'{'}
+    "product_name": "Full Product Name",
+    "brand": "Brand Name",
+    "estimated_score": <number>,
+    "reason": "Why this is a better choice"
+  ${'}'} OR null if score >= 50
 }`,
         },
       ],
       response_format: { type: 'json_object' },
-      max_tokens: 3000,
+      max_tokens: 3500,
     });
 
     const scoringContent = scoringResponse.choices[0].message.content;
@@ -295,12 +340,15 @@ Return STRICTLY in this JSON format:
               userId: session.user.id,
               productName: analysisResult.product_name,
               imageUrl: null,
-              qualityScore: analysisResult.scores.quality,
-              safetyScore: analysisResult.scores.safety,
-              organicType: analysisResult.scores.organic,
+              qualityScore: analysisResult.score,
+              safetyScore: analysisResult.score,
+              organicType: 'N/A',
               positiveIngredients: JSON.parse(JSON.stringify(analysisResult.positive_ingredients)),
               negativeIngredients: JSON.parse(JSON.stringify(analysisResult.negative_ingredients)),
               verdict: analysisResult.verdict,
+              healthierAlternative: analysisResult.healthier_alternative
+                ? JSON.parse(JSON.stringify(analysisResult.healthier_alternative))
+                : undefined,
             },
           });
           console.log('Analysis saved to database for user:', session.user.id);

@@ -34,7 +34,25 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
     return '#FFEBEE';
   };
 
-  const getOverallScore = Math.round((result.scores.quality + result.scores.safety) / 2);
+  const getRiskBadge = (level?: string) => {
+    if (!level) return null;
+    const config: Record<string, { bg: string; color: string; label: string }> = {
+      green: { bg: '#E8F5E9', color: '#2D6A4F', label: 'Safe' },
+      yellow: { bg: '#FFF8E1', color: '#F9A825', label: 'Low Risk' },
+      orange: { bg: '#FFF3E0', color: '#E65100', label: 'Moderate' },
+      red: { bg: '#FFEBEE', color: '#C62828', label: 'Hazardous' },
+    };
+    const c = config[level];
+    if (!c) return null;
+    return (
+      <span
+        className="inline-block text-xs px-2 py-0.5 rounded-full font-medium ml-2"
+        style={{ backgroundColor: c.bg, color: c.color }}
+      >
+        {c.label}
+      </span>
+    );
+  };
 
   const getCategoryIcon = (category: string): string => {
     const lower = category.toLowerCase();
@@ -55,9 +73,11 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
     return '📋';
   };
 
+  const score = result.score;
+
   return (
     <div className="space-y-4 animate-fadeIn">
-      {/* Product Name & Overall Score */}
+      {/* Product Name & Score */}
       <div className="bg-white rounded-lg border p-4 sm:p-6" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-start justify-between mb-1">
           <div className="flex-1 min-w-0">
@@ -70,89 +90,71 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
           </div>
           <div className="flex-shrink-0 text-center ml-3">
             <div
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center border-4"
+              className="w-18 h-18 sm:w-22 sm:h-22 rounded-full flex items-center justify-center border-4"
               style={{
-                borderColor: getScoreColor(getOverallScore),
-                backgroundColor: getScoreBg(getOverallScore),
+                width: '76px',
+                height: '76px',
+                borderColor: getScoreColor(score),
+                backgroundColor: getScoreBg(score),
               }}
             >
-              <span className="text-xl sm:text-2xl font-bold" style={{ color: getScoreColor(getOverallScore) }}>
-                {getOverallScore}
-              </span>
+              <div>
+                <span className="text-2xl sm:text-3xl font-bold block leading-none" style={{ color: getScoreColor(score) }}>
+                  {score}
+                </span>
+                <span className="text-xs opacity-60" style={{ color: getScoreColor(score) }}>/100</span>
+              </div>
             </div>
-            <p className="text-xs font-semibold mt-1" style={{ color: getScoreColor(getOverallScore) }}>
-              {getScoreLabel(getOverallScore)}
+            <p className="text-xs font-bold mt-1.5" style={{ color: getScoreColor(score) }}>
+              {getScoreLabel(score)}
             </p>
           </div>
         </div>
 
-        {/* Score Breakdown */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4 mb-4">
-          {/* Quality */}
-          <div className="text-center p-3 rounded-lg" style={{ backgroundColor: getScoreBg(result.scores.quality) }}>
-            <div className="text-2xl sm:text-3xl font-bold" style={{ color: getScoreColor(result.scores.quality) }}>
-              {result.scores.quality}
-            </div>
-            <div className="text-xs uppercase font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-              Quality
-            </div>
-            <div className="text-xs font-semibold mt-0.5" style={{ color: getScoreColor(result.scores.quality) }}>
-              {getScoreLabel(result.scores.quality)}
-            </div>
-          </div>
-
-          {/* Safety */}
-          <div className="text-center p-3 rounded-lg" style={{ backgroundColor: getScoreBg(result.scores.safety) }}>
-            <div className="text-2xl sm:text-3xl font-bold" style={{ color: getScoreColor(result.scores.safety) }}>
-              {result.scores.safety}
-            </div>
-            <div className="text-xs uppercase font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-              Safety
-            </div>
-            <div className="text-xs font-semibold mt-0.5" style={{ color: getScoreColor(result.scores.safety) }}>
-              {getScoreLabel(result.scores.safety)}
-            </div>
-          </div>
-
-          {/* Classification */}
-          <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#F5F1EB' }}>
-            <div
-              className="text-sm sm:text-base font-bold"
-              style={{ color: result.scores.organic === 'Organic' ? '#2D6A4F' : '#B85C50' }}
-            >
-              {result.scores.organic}
-            </div>
-            <div className="text-xs uppercase font-medium mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-              Type
-            </div>
-          </div>
-        </div>
-
         {/* Score Range Guide */}
-        <div className="rounded-lg p-3" style={{ backgroundColor: '#F9F7F4' }}>
-          <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <span>0-20 Very Poor</span>
-            <span>21-40 Poor</span>
-            <span>41-60 Fair</span>
-            <span>61-80 Good</span>
-            <span>81-100 Excellent</span>
+        <div className="rounded-lg p-3 mt-4" style={{ backgroundColor: '#F9F7F4' }}>
+          <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-2">
+            <div className="flex-1 rounded-l-full relative" style={{ backgroundColor: '#B85C50' }}>
+              {score >= 0 && score <= 20 && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#B85C50', left: `${(score / 20) * 100}%` }}></div>
+              )}
+            </div>
+            <div className="flex-1 relative" style={{ backgroundColor: '#C07040' }}>
+              {score > 20 && score <= 40 && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#C07040', left: `${((score - 20) / 20) * 100}%` }}></div>
+              )}
+            </div>
+            <div className="flex-1 relative" style={{ backgroundColor: '#D4A574' }}>
+              {score > 40 && score <= 60 && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#D4A574', left: `${((score - 40) / 20) * 100}%` }}></div>
+              )}
+            </div>
+            <div className="flex-1 relative" style={{ backgroundColor: '#4A7C59' }}>
+              {score > 60 && score <= 80 && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#4A7C59', left: `${((score - 60) / 20) * 100}%` }}></div>
+              )}
+            </div>
+            <div className="flex-1 rounded-r-full relative" style={{ backgroundColor: '#2D6A4F' }}>
+              {score > 80 && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#2D6A4F', left: `${((score - 80) / 20) * 100}%` }}></div>
+              )}
+            </div>
           </div>
-          <div className="flex h-2 rounded-full overflow-hidden mt-1.5 gap-0.5">
-            <div className="flex-1 rounded-l-full" style={{ backgroundColor: '#B85C50' }}></div>
-            <div className="flex-1" style={{ backgroundColor: '#C07040' }}></div>
-            <div className="flex-1" style={{ backgroundColor: '#D4A574' }}></div>
-            <div className="flex-1" style={{ backgroundColor: '#4A7C59' }}></div>
-            <div className="flex-1 rounded-r-full" style={{ backgroundColor: '#2D6A4F' }}></div>
+          <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
+            <span>Very Poor</span>
+            <span>Poor</span>
+            <span>Fair</span>
+            <span>Good</span>
+            <span>Excellent</span>
           </div>
         </div>
 
-        {/* EU Standards Note */}
         <div className="rounded p-2.5 mt-3 text-xs leading-relaxed" style={{ backgroundColor: '#F5F1EB', color: 'var(--text-secondary)' }}>
-          Scored using EU Cosmetics Regulation (EC) No 1223/2009 standards
+          Score based on EU Cosmetics Regulation (EC) No 1223/2009 penalty system
         </div>
       </div>
 
-      {/* Overall Verdict */}
+      {/* Verdict */}
       <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: 'var(--border)' }}>
         <h3 className="text-xs sm:text-sm font-bold uppercase mb-2 sm:mb-3" style={{ color: 'var(--text-secondary)' }}>
           Overall Assessment
@@ -161,6 +163,48 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
           {result.verdict}
         </p>
       </div>
+
+      {/* Healthier Alternative */}
+      {result.healthier_alternative && (
+        <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: '#4A7C59', borderWidth: '2px' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">💚</span>
+            <h3 className="text-sm sm:text-base font-bold" style={{ color: '#4A7C59' }}>
+              Healthier Alternative
+            </h3>
+          </div>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="font-semibold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
+                {result.healthier_alternative.product_name}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                by {result.healthier_alternative.brand}
+              </p>
+              <p className="text-xs sm:text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                {result.healthier_alternative.reason}
+              </p>
+            </div>
+            <div className="flex-shrink-0 text-center ml-3">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center border-3"
+                style={{
+                  borderColor: getScoreColor(result.healthier_alternative.estimated_score),
+                  backgroundColor: getScoreBg(result.healthier_alternative.estimated_score),
+                  borderWidth: '3px',
+                }}
+              >
+                <span className="text-base font-bold" style={{ color: getScoreColor(result.healthier_alternative.estimated_score) }}>
+                  {result.healthier_alternative.estimated_score}
+                </span>
+              </div>
+              <p className="text-xs font-medium mt-1" style={{ color: getScoreColor(result.healthier_alternative.estimated_score) }}>
+                est.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detected Ingredients (Collapsible) */}
       {result.detected_ingredients && result.detected_ingredients.length > 0 && (
@@ -198,7 +242,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
         </div>
       )}
 
-      {/* Positive Ingredients - Grouped by Category */}
+      {/* Positive Ingredients */}
       {result.positive_ingredients.length > 0 && (
         <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2 mb-4">
@@ -221,8 +265,11 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
                 <div className="space-y-2 pl-7">
                   {group.items.map((item, index) => (
                     <div key={index}>
-                      <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {item.name}
+                      <div className="flex items-center flex-wrap">
+                        <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                          {item.name}
+                        </span>
+                        {getRiskBadge(item.risk_level)}
                       </div>
                       {item.benefit && (
                         <div className="text-xs leading-relaxed mt-0.5" style={{ color: 'var(--text-secondary)' }}>
@@ -238,7 +285,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
         </div>
       )}
 
-      {/* Negative Ingredients - Grouped by Category */}
+      {/* Negative Ingredients */}
       {result.negative_ingredients.length > 0 && (
         <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2 mb-4">
@@ -261,8 +308,11 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
                 <div className="space-y-2 pl-7">
                   {group.items.map((item, index) => (
                     <div key={index}>
-                      <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {item.name}
+                      <div className="flex items-center flex-wrap">
+                        <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                          {item.name}
+                        </span>
+                        {getRiskBadge(item.risk_level)}
                       </div>
                       {item.concern && (
                         <div className="text-xs leading-relaxed mt-0.5" style={{ color: 'var(--text-secondary)' }}>

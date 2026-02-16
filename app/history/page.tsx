@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import HistoryClient from '@/components/HistoryClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HistoryPage() {
   const session = await auth();
 
@@ -23,9 +25,7 @@ export default async function HistoryPage() {
   const historyData = analyses.map((analysis) => ({
     id: analysis.id,
     productName: analysis.productName,
-    qualityScore: analysis.qualityScore,
-    safetyScore: analysis.safetyScore,
-    organicType: analysis.organicType,
+    score: analysis.qualityScore,
     createdAt: analysis.createdAt.toISOString(),
     positiveIngredients: analysis.positiveIngredients as unknown,
     negativeIngredients: analysis.negativeIngredients as unknown,

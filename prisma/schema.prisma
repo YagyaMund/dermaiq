@@ -70,10 +70,11 @@ model Analysis {
 
   qualityScore Int
   safetyScore  Int
-  organicType  String
+  organicType  String  @default("N/A")
 
-  positiveIngredients Json
-  negativeIngredients Json
+  positiveIngredients  Json
+  negativeIngredients  Json
+  healthierAlternative Json?
 
   verdict   String
   createdAt DateTime @default(now())

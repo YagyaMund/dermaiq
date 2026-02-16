@@ -1,15 +1,10 @@
 // Type definitions for DermaIQ Product Analyzer
 
-export interface AnalysisScores {
-  quality: number;
-  safety: number;
-  organic: 'Organic' | 'Synthetic' | 'Unknown';
-}
-
 export interface IngredientItem {
   name: string;
   benefit?: string;
   concern?: string;
+  risk_level?: 'green' | 'yellow' | 'orange' | 'red';
 }
 
 export interface IngredientCategory {
@@ -17,14 +12,22 @@ export interface IngredientCategory {
   items: IngredientItem[];
 }
 
+export interface HealthierAlternative {
+  product_name: string;
+  brand: string;
+  estimated_score: number;
+  reason: string;
+}
+
 export interface AnalysisResult {
   product_name: string;
   product_type: string;
   detected_ingredients: string[];
-  scores: AnalysisScores;
+  score: number;
   positive_ingredients: IngredientCategory[];
   negative_ingredients: IngredientCategory[];
   verdict: string;
+  healthier_alternative?: HealthierAlternative;
 }
 
 export interface AnalysisError {
