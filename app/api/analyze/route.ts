@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpenAI, VISION_MODEL, TEXT_MODEL } from '@/lib/openai';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import type { AnalysisResult, VisionExtractionResult } from '@/types';
 
@@ -234,7 +236,36 @@ Return in JSON:
     }
 
     // Return the complete analysis
-    return NextResponse.json(analysisResult, { status: 200 });
+    const response = NextResponse.json(analysisResult, { status: 200 });
+
+    // Save to database if user is logged in (async, don't block response)
+    auth().then(async (session) => {
+      if (session?.user?.id) {
+        try {
+          await prisma.analysis.create({
+            data: {
+              userId: session.user.id,
+              productName: analysisResult.product_name,
+              imageUrl: null, // Could store uploaded image URL if needed
+              qualityScore: analysisResult.scores.quality,
+              safetyScore: analysisResult.scores.safety,
+              organicType: analysisResult.scores.organic,
+              positiveIngredients: JSON.parse(JSON.stringify(analysisResult.positive_ingredients)),
+              negativeIngredients: JSON.parse(JSON.stringify(analysisResult.negative_ingredients)),
+              verdict: analysisResult.verdict,
+            },
+          });
+          console.log('Analysis saved to database for user:', session.user.id);
+        } catch (dbError) {
+          console.error('Failed to save analysis to database:', dbError);
+          // Don't fail the request if database save fails
+        }
+      }
+    }).catch((authError) => {
+      console.error('Auth check failed:', authError);
+    });
+
+    return response;
 
   } catch (error) {
     console.error('Analysis error:', error);

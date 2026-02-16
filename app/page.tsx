@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import Link from 'next/link';
 import Image from 'next/image';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import type { AnalysisResult, AnalysisError } from '@/types';
 
 export default function Home() {
+  const { data: session, status } = useSession();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -82,6 +85,48 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface)' }}>
+      {/* Top Navigation */}
+      <div className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'white' }}>
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
+            DermaIQ
+          </div>
+          <div className="flex items-center gap-3">
+            {status === 'loading' ? (
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading...</span>
+            ) : session ? (
+              <>
+                <Link
+                  href="/history"
+                  className="text-sm px-4 py-2 rounded-lg border"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                >
+                  History
+                </Link>
+                <span className="text-sm hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>
+                  {session.user?.name || session.user?.email}
+                </span>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="text-sm px-4 py-2 rounded-lg"
+                  style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="text-sm px-4 py-2 rounded-lg text-white"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                Login
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
         {/* Simple Header */}
         <div className="text-center mb-6 sm:mb-8">
