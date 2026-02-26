@@ -170,65 +170,45 @@ Return STRICTLY in this JSON format:
       );
     }
 
-    // Step 2: Analyze ingredients using strict European standards with penalty-based scoring
-    console.log('Step 2: Analyzing ingredients using European standards...');
+    // Step 2: Analyze ingredients using Yuka-style scoring (highest-risk ingredient sets range)
+    console.log('Step 2: Analyzing ingredients (Yuka-style scoring)...');
     const ingredientCount = visionData.ingredients.length;
-    const isLowIngredientProduct = ingredientCount <= 3;
 
     const scoringResponse = await openai.chat.completions.create({
       model: TEXT_MODEL,
       messages: [
         {
           role: 'system',
-          content: `You are DermaIQ's European Cosmetic Safety Analyst.
+          content: `You are DermaIQ's Cosmetic Safety Analyst using a Yuka-style scoring method.
 
-You evaluate cosmetic products using STRICT European Union regulatory standards:
-- EU Cosmetics Regulation (EC) No 1223/2009
-- SCCS (Scientific Committee on Consumer Safety) opinions
-- EU Annex II (Prohibited Substances — 1,600+ banned ingredients)
-- EU Annex III (Restricted Substances with conditions)
-- EU Annex IV-VI (Permitted colorants, preservatives, UV filters with limits)
-- CLP Regulation for allergen labeling (26 fragrance allergens)
+You evaluate cosmetic products by analyzing every ingredient. Based on current science, each ingredient is assigned a risk level according to its potential effects on health or the environment: endocrine disruption, carcinogenic, allergenic, irritant, or pollutant. The potential risks and relevant scientific sources can be referenced in your concern/benefit text.
 
-INGREDIENT RISK CLASSIFICATION:
-Classify each ingredient into one of 4 risk levels:
-- GREEN (risk-free): Safe, beneficial, no known concerns under EU standards
-- YELLOW (low risk): Generally safe but has minor concerns (e.g., mild allergen potential, mild irritant)
-- ORANGE (moderate risk): Notable concerns — restricted in EU, potential sensitizer, controversial preservative, PEGs, certain parabens, synthetic fragrances
-- RED (hazardous): Banned or severely restricted in EU, known carcinogen, confirmed endocrine disruptor, formaldehyde releaser
+INGREDIENT RISK CLASSIFICATION (four categories only):
+- GREEN (risk-free): No known concerns; safe, beneficial under current science
+- YELLOW (low risk): Minor concerns (e.g. mild allergen potential, mild irritant)
+- ORANGE (moderate risk): Notable concerns — potential endocrine disruptor, carcinogenic, allergenic, irritant, or pollutant
+- RED (high-risk): Hazardous — confirmed endocrine disruptor, known carcinogen, severe allergen, or other serious health/environment risk
 
-PENALTY-BASED SCORING SYSTEM (YOU MUST FOLLOW THIS EXACTLY):
+SCORING RULES (YOU MUST FOLLOW THIS EXACTLY):
 
-Start from 100 points.
+The score is based on the LEVEL OF THE HIGHEST-RISK INGREDIENT in the product.
 
-CASE 1 — Product contains ONLY green and yellow ingredients (no orange or red):
-The score floor is 50 (score cannot go below 50).
-Apply these penalties per ingredient:
-  • -10 points if the ingredient is potentially carcinogenic or an endocrine disruptor
-  • -7 points if the ingredient has MULTIPLE risks (e.g., allergen + irritant, or irritant + pollutant)
-  • -2 points if the ingredient has only ONE risk (allergen OR irritant OR other health effect OR pollutant)
+1) If ANY high-risk (red) ingredient is present:
+   → Score must be RED: strictly lower than 25/100 (range 0–24).
+   Other ingredients determine the exact score within 0–24 via penalties (e.g. more red/orange/yellow ingredients lower the score further).
 
-CASE 2 — Product contains orange or red ingredients:
-The CEILING is determined by the worst ingredient:
-  • If ANY red (hazardous) ingredient exists → score ceiling is 24 (score range: 0-24)
-  • If no red but ANY orange (moderate risk) exists → score ceiling is 49 (score range: 0-49)
+2) If the highest-risk ingredient is moderate (orange) — no red present:
+   → Score must be lower than 50/100 (range 0–49).
+   Other ingredients determine the exact score within 0–49 via penalties.
 
-Then apply penalties per ingredient:
-  • -12 pts for a RED carcinogen or endocrine disruptor
-  • -8 pts for a RED allergen, irritant, other health effect, or pollutant
-  • -6 pts for an ORANGE carcinogen or endocrine disruptor
-  • -4 pts for an ORANGE allergen, irritant, other health effect, or pollutant
-  • -3 pts for a YELLOW carcinogen or endocrine disruptor
-  • -2 pts for a YELLOW allergen, irritant, other health effect, or pollutant
-If an ingredient has multiple risks, apply ONLY the highest penalty (not cumulative).
+3) If the highest-risk ingredients are only low (yellow) or risk-free (green):
+   → Score is in the green band: 50–100.
+   Other ingredients determine the exact score within 50–100 (penalties for yellow/green concerns can reduce the score within this range).
 
-SPECIAL RULE — Few ingredients (3 or fewer total):
-If the product has 3 or fewer ingredients, the penalties are MORE SEVERE because each risky ingredient represents a larger share. Multiply all penalties by 1.5x.
-
-Score cannot go below 0.
+Apply penalties for each ingredient’s risks (endocrine, carcinogenic, allergenic, irritant, pollutant). Use only the highest penalty per ingredient (do not sum multiple penalties for the same ingredient). Ensure the final score never goes below 0 and never exceeds the allowed range (0–24 if any red; 0–49 if any orange but no red; 50–100 if only green/yellow).
 
 INGREDIENT GROUPING:
-Group positive and negative ingredients into everyday categories:
+Group positive and negative ingredients into everyday categories (only include categories that have ingredients):
 - Moisturizers & Hydrators
 - Vitamins & Antioxidants
 - Soothing & Calming Agents
@@ -238,33 +218,28 @@ Group positive and negative ingredients into everyday categories:
 - Fragrances & Scents
 - Preservatives & Stabilizers
 - Harsh Cleansing Agents (Sulfates)
-- Synthetic Chemicals
 - Potential Allergens
 - Silicones & Film Formers
 - Colorants & Dyes
 - pH Adjusters & Buffers
 
-Only include categories that have ingredients. Skip empty categories.
+Do NOT use a "Synthetic Chemicals" category. Skip empty categories.
 
 HEALTHIER ALTERNATIVE:
-If the final score is below 50, you MUST suggest a healthier alternative product in the same category (e.g., if analyzing a moisturizer, suggest a healthier moisturizer). The alternative should:
-- Be a real, widely available product
-- Have a cleaner ingredient profile
-- Be in a similar price range if possible
-- Provide an estimated score based on its known ingredients`,
+If the final score is below 50, suggest a healthier alternative product in the same category. The alternative should be a real, widely available product with a cleaner ingredient profile and an estimated score.`,
         },
         {
           role: 'user',
-          content: `Analyze this ${visionData.product_type} product using the PENALTY-BASED EU scoring system:
+          content: `Analyze this ${visionData.product_type} product using the Yuka-style scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
 
 Product: ${visionData.product_name}
 Type: ${visionData.product_type}
-Total Ingredient Count: ${ingredientCount}${isLowIngredientProduct ? ' (FEW INGREDIENTS — apply 1.5x penalty multiplier)' : ''}
+Total Ingredient Count: ${ingredientCount}
 Full Ingredient List (INCI): ${visionData.ingredients.join(', ')}
 
 You MUST:
-1. Classify each ingredient as green/yellow/orange/red
-2. Calculate the score using the exact penalty system described
+1. Classify each ingredient as green/yellow/orange/red based on health and environment risks
+2. Determine the score range from the highest-risk ingredient, then set exact score within that range using penalties from other ingredients
 3. Group positive ingredients by category with simple names and benefits
 4. Group negative ingredients by category with simple names, risk levels, and concerns
 5. Write an honest 2-3 sentence verdict for regular consumers

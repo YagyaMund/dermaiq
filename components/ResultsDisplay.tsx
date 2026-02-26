@@ -10,27 +10,28 @@ interface ResultsDisplayProps {
 export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   const [showIngredients, setShowIngredients] = useState(false);
 
+  // Yuka-style bands: red < 25, orange < 50, then fair/good/excellent
   const getScoreColor = (score: number): string => {
     if (score >= 80) return '#2D6A4F';
-    if (score >= 60) return '#4A7C59';
-    if (score >= 40) return '#D4A574';
-    if (score >= 20) return '#C07040';
+    if (score >= 65) return '#4A7C59';
+    if (score >= 50) return '#D4A574';
+    if (score >= 25) return '#C07040';
     return '#B85C50';
   };
 
   const getScoreLabel = (score: number): string => {
     if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    if (score >= 20) return 'Poor';
+    if (score >= 65) return 'Good';
+    if (score >= 50) return 'Fair';
+    if (score >= 25) return 'Poor';
     return 'Very Poor';
   };
 
   const getScoreBg = (score: number): string => {
     if (score >= 80) return '#E8F5E9';
-    if (score >= 60) return '#F1F8E9';
-    if (score >= 40) return '#FFF8E1';
-    if (score >= 20) return '#FFF3E0';
+    if (score >= 65) return '#F1F8E9';
+    if (score >= 50) return '#FFF8E1';
+    if (score >= 25) return '#FFF3E0';
     return '#FFEBEE';
   };
 
@@ -65,7 +66,6 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
     if (lower.includes('fragranc') || lower.includes('scent')) return '🌸';
     if (lower.includes('preserv') || lower.includes('stabil')) return '🧪';
     if (lower.includes('sulfat') || lower.includes('cleans')) return '🫧';
-    if (lower.includes('synthetic') || lower.includes('chemical')) return '⚗️';
     if (lower.includes('allergen')) return '⚠️';
     if (lower.includes('silicon') || lower.includes('film')) return '🔬';
     if (lower.includes('color') || lower.includes('dye')) return '🎨';
@@ -111,31 +111,31 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
           </div>
         </div>
 
-        {/* Score Range Guide */}
+        {/* Score Range Guide (Yuka-style: red <25, orange <50, green 50-100) */}
         <div className="rounded-lg p-3 mt-4" style={{ backgroundColor: '#F9F7F4' }}>
           <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-2">
             <div className="flex-1 rounded-l-full relative" style={{ backgroundColor: '#B85C50' }}>
-              {score >= 0 && score <= 20 && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#B85C50', left: `${(score / 20) * 100}%` }}></div>
+              {score >= 0 && score < 25 && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#B85C50', left: `${(score / 25) * 100}%` }}></div>
               )}
             </div>
             <div className="flex-1 relative" style={{ backgroundColor: '#C07040' }}>
-              {score > 20 && score <= 40 && (
-                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#C07040', left: `${((score - 20) / 20) * 100}%` }}></div>
+              {score >= 25 && score < 50 && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#C07040', left: `${((score - 25) / 25) * 100}%` }}></div>
               )}
             </div>
             <div className="flex-1 relative" style={{ backgroundColor: '#D4A574' }}>
-              {score > 40 && score <= 60 && (
-                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#D4A574', left: `${((score - 40) / 20) * 100}%` }}></div>
+              {score >= 50 && score < 65 && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#D4A574', left: `${((score - 50) / 15) * 100}%` }}></div>
               )}
             </div>
             <div className="flex-1 relative" style={{ backgroundColor: '#4A7C59' }}>
-              {score > 60 && score <= 80 && (
-                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#4A7C59', left: `${((score - 60) / 20) * 100}%` }}></div>
+              {score >= 65 && score < 80 && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#4A7C59', left: `${((score - 65) / 15) * 100}%` }}></div>
               )}
             </div>
             <div className="flex-1 rounded-r-full relative" style={{ backgroundColor: '#2D6A4F' }}>
-              {score > 80 && (
+              {score >= 80 && (
                 <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#2D6A4F', left: `${((score - 80) / 20) * 100}%` }}></div>
               )}
             </div>
@@ -150,7 +150,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
         </div>
 
         <div className="rounded p-2.5 mt-3 text-xs leading-relaxed" style={{ backgroundColor: '#F5F1EB', color: 'var(--text-secondary)' }}>
-          Score based on EU Cosmetics Regulation (EC) No 1223/2009 penalty system
+          Score based on highest-risk ingredient (Yuka-style: red &lt;25, orange &lt;50, green 50–100)
         </div>
       </div>
 
