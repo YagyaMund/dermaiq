@@ -27,7 +27,7 @@ export interface AnalysisResult {
   positive_ingredients: IngredientCategory[];
   negative_ingredients: IngredientCategory[];
   verdict: string;
-  healthier_alternative?: HealthierAlternative;
+  healthier_alternative?: HealthierAlternative | null;
 }
 
 export interface AnalysisError {
