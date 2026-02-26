@@ -135,7 +135,7 @@ export default function Home() {
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-lg border p-4 sm:p-6 mb-4 sm:mb-6" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-white rounded-2xl border shadow-sm p-4 sm:p-6 mb-4 sm:mb-6" style={{ borderColor: 'var(--border)' }}>
           {selectedImage ? (
             <div className="mb-4 sm:mb-6">
               <div className="border-2 border-dashed rounded-lg p-4 text-center" style={{ borderColor: 'var(--border)' }}>
@@ -197,7 +197,7 @@ export default function Home() {
           )}
 
           {error && (
-            <div className="mb-4 p-3 rounded text-xs sm:text-sm leading-relaxed" style={{ backgroundColor: '#FEF2F2', color: '#B85C50', border: '1px solid #FECACA' }}>
+            <div className="mb-4 p-3 rounded-xl text-xs sm:text-sm leading-relaxed" style={{ backgroundColor: '#FEF2F2', color: '#B85C50', border: '1px solid #FECACA' }}>
               {error}
             </div>
           )}
@@ -207,7 +207,7 @@ export default function Home() {
               <button
                 onClick={handleAnalyze}
                 disabled={isAnalyzing}
-                className="flex-1 py-3 sm:py-3.5 px-4 rounded font-semibold text-sm sm:text-base text-white transition-colors disabled:opacity-50 active:scale-95"
+                className="flex-1 py-3 sm:py-3.5 px-4 rounded-xl font-semibold text-sm sm:text-base text-white transition-all disabled:opacity-50 active:scale-95 shadow-sm"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
                 {isAnalyzing ? (
@@ -225,7 +225,7 @@ export default function Home() {
               <button
                 onClick={handleReset}
                 disabled={isAnalyzing}
-                className="px-6 py-3 sm:py-3.5 rounded font-medium text-sm sm:text-base transition-colors active:scale-95"
+                className="px-6 py-3 sm:py-3.5 rounded-xl font-medium text-sm sm:text-base transition-all active:scale-95"
                 style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
               >
                 Clear
@@ -240,7 +240,7 @@ export default function Home() {
             <div className="text-center mt-4 sm:mt-6">
               <button
                 onClick={handleReset}
-                className="w-full sm:w-auto px-6 py-3 rounded font-semibold text-sm sm:text-base text-white active:scale-95 transition-transform"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-sm sm:text-base text-white active:scale-95 transition-all shadow-sm"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
                 Analyze Another Product
@@ -262,7 +262,7 @@ export default function Home() {
         )}
 
         <div className="text-center mt-6 sm:mt-8 text-xs px-4" style={{ color: 'var(--text-secondary)' }}>
-          <p>Scored using EU Cosmetics Regulation (EC) No 1223/2009 penalty system</p>
+          <p>Risk-based ingredient scoring &bull; Cosmetics only</p>
         </div>
       </div>
     </div>
