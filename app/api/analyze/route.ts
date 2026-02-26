@@ -31,6 +31,7 @@ const HealthierAlternativeSchema = z.object({
   brand: z.string(),
   estimated_score: z.number(),
   reason: z.string(),
+  image_url: z.string().nullable().optional(),
 }).optional();
 
 const ScoringResultSchema = z.object({
@@ -170,8 +171,8 @@ Return STRICTLY in this JSON format:
       );
     }
 
-    // Step 2: Analyze ingredients using Yuka-style scoring (highest-risk ingredient sets range)
-    console.log('Step 2: Analyzing ingredients (Yuka-style scoring)...');
+    // Step 2: Analyze ingredients using risk-based scoring (highest-risk ingredient sets range)
+    console.log('Step 2: Analyzing ingredients (risk-based scoring)...');
     const ingredientCount = visionData.ingredients.length;
 
     const scoringResponse = await openai.chat.completions.create({
@@ -179,7 +180,7 @@ Return STRICTLY in this JSON format:
       messages: [
         {
           role: 'system',
-          content: `You are DermaIQ's Cosmetic Safety Analyst using a Yuka-style scoring method.
+          content: `You are DermaIQ's Cosmetic Safety Analyst using a risk-based scoring method.
 
 You evaluate cosmetic products by analyzing every ingredient. Based on current science, each ingredient is assigned a risk level according to its potential effects on health or the environment: endocrine disruption, carcinogenic, allergenic, irritant, or pollutant. The potential risks and relevant scientific sources can be referenced in your concern/benefit text.
 
@@ -226,11 +227,11 @@ Group positive and negative ingredients into everyday categories (only include c
 Do NOT use a "Synthetic Chemicals" category. Skip empty categories.
 
 HEALTHIER ALTERNATIVE:
-If the final score is below 50, suggest a healthier alternative product in the same category. The alternative should be a real, widely available product with a cleaner ingredient profile and an estimated score.`,
+If the final score is below 50, suggest a healthier alternative product in the same category. The alternative should be a real, widely available product with a cleaner ingredient profile and an estimated score. If you know a direct, public image URL for the product (e.g. from the brand's or retailer's site), include it as image_url; otherwise omit image_url or set to null.`,
         },
         {
           role: 'user',
-          content: `Analyze this ${visionData.product_type} product using the Yuka-style scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
+          content: `Analyze this ${visionData.product_type} product using the risk-based scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
 
 Product: ${visionData.product_name}
 Type: ${visionData.product_type}
@@ -275,7 +276,8 @@ Return STRICTLY in this JSON format:
     "product_name": "Full Product Name",
     "brand": "Brand Name",
     "estimated_score": <number>,
-    "reason": "Why this is a better choice"
+    "reason": "Why this is a better choice",
+    "image_url": "https://example.com/product-image.jpg" OR null
   ${'}'} OR null if score >= 50
 }`,
         },

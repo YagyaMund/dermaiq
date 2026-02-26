@@ -10,7 +10,7 @@ interface ResultsDisplayProps {
 export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   const [showIngredients, setShowIngredients] = useState(false);
 
-  // Yuka-style bands: red < 25, orange < 50, then fair/good/excellent
+  // Risk-based bands: red < 25, orange < 50, then fair/good/excellent
   const getScoreColor = (score: number): string => {
     if (score >= 80) return '#2D6A4F';
     if (score >= 65) return '#4A7C59';
@@ -75,88 +75,82 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
 
   const score = result.score;
 
+  // Grading scale: bands 0–24 (25%), 25–49 (25%), 50–64 (15%), 65–79 (15%), 80–100 (20%)
+  const scaleSegments = [
+    { width: 25, color: '#B85C50', label: 'Very Poor' },
+    { width: 25, color: '#C07040', label: 'Poor' },
+    { width: 15, color: '#D4A574', label: 'Fair' },
+    { width: 15, color: '#4A7C59', label: 'Good' },
+    { width: 20, color: '#2D6A4F', label: 'Excellent' },
+  ];
+  const scorePositionPercent = Math.min(100, Math.max(0, (score / 100) * 100));
+
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="space-y-5 animate-fadeIn">
       {/* Product Name & Score */}
-      <div className="bg-white rounded-lg border p-4 sm:p-6" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-start justify-between mb-1">
+      <div className="bg-white rounded-xl border-2 shadow-sm p-5 sm:p-6" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               {result.product_name}
             </h2>
-            <p className="text-xs sm:text-sm capitalize mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-xs sm:text-sm capitalize mt-1 opacity-80" style={{ color: 'var(--text-secondary)' }}>
               {result.product_type?.replace(/_/g, ' ') || 'Cosmetic Product'}
             </p>
           </div>
-          <div className="flex-shrink-0 text-center ml-3">
+          <div className="flex-shrink-0 text-center">
             <div
-              className="w-18 h-18 sm:w-22 sm:h-22 rounded-full flex items-center justify-center border-4"
+              className="rounded-full flex items-center justify-center border-4 shadow-inner"
               style={{
-                width: '76px',
-                height: '76px',
+                width: '80px',
+                height: '80px',
                 borderColor: getScoreColor(score),
                 backgroundColor: getScoreBg(score),
               }}
             >
-              <div>
-                <span className="text-2xl sm:text-3xl font-bold block leading-none" style={{ color: getScoreColor(score) }}>
-                  {score}
-                </span>
-                <span className="text-xs opacity-60" style={{ color: getScoreColor(score) }}>/100</span>
-              </div>
+              <span className="inline-flex items-baseline">
+                <span className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: getScoreColor(score) }}>{score}</span>
+                <span className="text-sm opacity-70 ml-0.5" style={{ color: getScoreColor(score) }}>/100</span>
+              </span>
             </div>
-            <p className="text-xs font-bold mt-1.5" style={{ color: getScoreColor(score) }}>
+            <p className="text-xs font-semibold mt-2" style={{ color: getScoreColor(score) }}>
               {getScoreLabel(score)}
             </p>
           </div>
         </div>
 
-        {/* Score Range Guide (Yuka-style: red <25, orange <50, green 50-100) */}
-        <div className="rounded-lg p-3 mt-4" style={{ backgroundColor: '#F9F7F4' }}>
-          <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-2">
-            <div className="flex-1 rounded-l-full relative" style={{ backgroundColor: '#B85C50' }}>
-              {score >= 0 && score < 25 && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#B85C50', left: `${(score / 25) * 100}%` }}></div>
-              )}
+        {/* Grading scale bar — segment widths match score bands (25, 25, 15, 15, 20) */}
+        <div className="mt-5">
+          <div className="rounded-xl p-3.5" style={{ backgroundColor: 'var(--surface)' }}>
+            <div className="relative flex h-4 rounded-full overflow-hidden" style={{ maxWidth: '100%' }}>
+              {scaleSegments.map((seg, i) => (
+                <div
+                  key={i}
+                  className="h-full first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${seg.width}%`, backgroundColor: seg.color }}
+                />
+              ))}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full border-2 shadow-md pointer-events-none"
+                style={{ left: `calc(${scorePositionPercent}% - 6px)`, borderColor: getScoreColor(score), minWidth: '12px', minHeight: '12px' }}
+                aria-hidden
+              />
             </div>
-            <div className="flex-1 relative" style={{ backgroundColor: '#C07040' }}>
-              {score >= 25 && score < 50 && (
-                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#C07040', left: `${((score - 25) / 25) * 100}%` }}></div>
-              )}
-            </div>
-            <div className="flex-1 relative" style={{ backgroundColor: '#D4A574' }}>
-              {score >= 50 && score < 65 && (
-                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#D4A574', left: `${((score - 50) / 15) * 100}%` }}></div>
-              )}
-            </div>
-            <div className="flex-1 relative" style={{ backgroundColor: '#4A7C59' }}>
-              {score >= 65 && score < 80 && (
-                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#4A7C59', left: `${((score - 65) / 15) * 100}%` }}></div>
-              )}
-            </div>
-            <div className="flex-1 rounded-r-full relative" style={{ backgroundColor: '#2D6A4F' }}>
-              {score >= 80 && (
-                <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full border-2" style={{ borderColor: '#2D6A4F', left: `${((score - 80) / 20) * 100}%` }}></div>
-              )}
+            <div className="flex justify-between text-xs mt-2 gap-1" style={{ color: 'var(--text-secondary)' }}>
+              {scaleSegments.map((seg, i) => (
+                <span key={i} className="flex-1 text-center font-medium">{seg.label}</span>
+              ))}
             </div>
           </div>
-          <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <span>Very Poor</span>
-            <span>Poor</span>
-            <span>Fair</span>
-            <span>Good</span>
-            <span>Excellent</span>
-          </div>
-        </div>
-
-        <div className="rounded p-2.5 mt-3 text-xs leading-relaxed" style={{ backgroundColor: '#F5F1EB', color: 'var(--text-secondary)' }}>
-          Score based on highest-risk ingredient (Yuka-style: red &lt;25, orange &lt;50, green 50–100)
+          <p className="text-xs mt-2.5 opacity-80" style={{ color: 'var(--text-secondary)' }}>
+            Score based on highest-risk ingredient: red &lt;25, orange &lt;50, green 50–100
+          </p>
         </div>
       </div>
 
       {/* Verdict */}
-      <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: 'var(--border)' }}>
-        <h3 className="text-xs sm:text-sm font-bold uppercase mb-2 sm:mb-3" style={{ color: 'var(--text-secondary)' }}>
+      <div className="bg-white rounded-xl border-2 shadow-sm p-5 sm:p-6" style={{ borderColor: 'var(--border)' }}>
+        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider mb-3 opacity-90" style={{ color: 'var(--text-secondary)' }}>
           Overall Assessment
         </h3>
         <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'var(--text-primary)' }}>
@@ -165,50 +159,77 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
       </div>
 
       {/* Healthier Alternative */}
-      {result.healthier_alternative && (
-        <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: '#4A7C59', borderWidth: '2px' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-lg">💚</span>
-            <h3 className="text-sm sm:text-base font-bold" style={{ color: '#4A7C59' }}>
-              Healthier Alternative
-            </h3>
-          </div>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="font-semibold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
-                {result.healthier_alternative.product_name}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                by {result.healthier_alternative.brand}
-              </p>
-              <p className="text-xs sm:text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                {result.healthier_alternative.reason}
-              </p>
-            </div>
-            <div className="flex-shrink-0 text-center ml-3">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center border-3"
-                style={{
-                  borderColor: getScoreColor(result.healthier_alternative.estimated_score),
-                  backgroundColor: getScoreBg(result.healthier_alternative.estimated_score),
-                  borderWidth: '3px',
-                }}
-              >
-                <span className="text-base font-bold" style={{ color: getScoreColor(result.healthier_alternative.estimated_score) }}>
-                  {result.healthier_alternative.estimated_score}
-                </span>
+      {result.healthier_alternative && (() => {
+        const alt = result.healthier_alternative;
+        const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(alt.product_name + ' ' + alt.brand)}`;
+        return (
+          <div className="bg-white rounded-xl border-2 shadow-sm overflow-hidden" style={{ borderColor: '#4A7C59' }}>
+            <div className="p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl" aria-hidden>💚</span>
+                <h3 className="text-base sm:text-lg font-bold" style={{ color: '#4A7C59' }}>
+                  Healthier Alternative
+                </h3>
               </div>
-              <p className="text-xs font-medium mt-1" style={{ color: getScoreColor(result.healthier_alternative.estimated_score) }}>
-                est.
-              </p>
+              <div className="flex gap-4 sm:gap-5">
+                {/* Product image or placeholder */}
+                <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center" style={{ backgroundColor: 'var(--surface)' }}>
+                  {alt.image_url && (alt.image_url.startsWith('http://') || alt.image_url.startsWith('https://')) ? (
+                    <img
+                      src={alt.image_url}
+                      alt=""
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-3xl sm:text-4xl opacity-40" aria-hidden>🧴</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
+                    {alt.product_name}
+                  </p>
+                  <p className="text-xs mt-0.5 opacity-80" style={{ color: 'var(--text-secondary)' }}>
+                    by {alt.brand}
+                  </p>
+                  <p className="text-xs sm:text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    {alt.reason}
+                  </p>
+                  <a
+                    href={googleSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium rounded-lg px-3 py-1.5 transition opacity-90 hover:opacity-100"
+                    style={{ color: '#4A7C59', backgroundColor: 'rgba(74, 124, 89, 0.12)' }}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    Search on Google
+                  </a>
+                </div>
+                <div className="flex-shrink-0 text-center">
+                  <div
+                    className="w-14 h-14 rounded-full flex flex-col items-center justify-center border-2"
+                    style={{
+                      borderColor: getScoreColor(alt.estimated_score),
+                      backgroundColor: getScoreBg(alt.estimated_score),
+                    }}
+                  >
+                    <span className="text-lg font-bold" style={{ color: getScoreColor(alt.estimated_score) }}>
+                      {alt.estimated_score}
+                    </span>
+                    <span className="text-[10px] font-medium opacity-80" style={{ color: getScoreColor(alt.estimated_score) }}>
+                      est.
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Detected Ingredients (Collapsible) */}
       {result.detected_ingredients && result.detected_ingredients.length > 0 && (
-        <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-white rounded-xl border-2 shadow-sm p-5 sm:p-6" style={{ borderColor: 'var(--border)' }}>
           <button
             onClick={() => setShowIngredients(!showIngredients)}
             className="w-full flex items-center justify-between"
@@ -244,7 +265,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
 
       {/* Positive Ingredients */}
       {result.positive_ingredients.length > 0 && (
-        <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-white rounded-xl border-2 shadow-sm p-5 sm:p-6" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#4A7C59' }}>
               ✓
@@ -287,7 +308,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
 
       {/* Negative Ingredients */}
       {result.negative_ingredients.length > 0 && (
-        <div className="bg-white rounded-lg border p-4 sm:p-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-white rounded-xl border-2 shadow-sm p-5 sm:p-6" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-base font-bold flex-shrink-0" style={{ backgroundColor: '#B85C50' }}>
               !

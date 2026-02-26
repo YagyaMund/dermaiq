@@ -1,4 +1,4 @@
-# Scoring Algorithm (Yuka-style)
+# Scoring Algorithm
 
 Local interface for cosmetic product scoring. No organic/synthetic classification is used.
 

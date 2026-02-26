@@ -17,6 +17,8 @@ export interface HealthierAlternative {
   brand: string;
   estimated_score: number;
   reason: string;
+  /** Optional URL to a product image (e.g. brand or retailer). */
+  image_url?: string | null;
 }
 
 export interface AnalysisResult {
