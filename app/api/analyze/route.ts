@@ -306,38 +306,33 @@ Return STRICTLY in this JSON format:
       );
     }
 
-    const response = NextResponse.json(analysisResult, { status: 200 });
+    const session = await auth();
 
-    // Save to database if user is logged in (async, don't block response)
-    auth().then(async (session) => {
-      if (session?.user?.id) {
-        try {
-          await prisma.analysis.create({
-            data: {
-              userId: session.user.id,
-              productName: analysisResult.product_name,
-              imageUrl: null,
-              qualityScore: analysisResult.score,
-              safetyScore: analysisResult.score,
-              organicType: 'N/A',
-              positiveIngredients: JSON.parse(JSON.stringify(analysisResult.positive_ingredients)),
-              negativeIngredients: JSON.parse(JSON.stringify(analysisResult.negative_ingredients)),
-              verdict: analysisResult.verdict,
-              healthierAlternative: analysisResult.healthier_alternative
-                ? JSON.parse(JSON.stringify(analysisResult.healthier_alternative))
-                : undefined,
-            },
-          });
-          console.log('Analysis saved to database for user:', session.user.id);
-        } catch (dbError) {
-          console.error('Failed to save analysis to database:', dbError);
-        }
+    if (session?.user?.id) {
+      try {
+        await prisma.analysis.create({
+          data: {
+            userId: session.user.id,
+            productName: analysisResult.product_name,
+            imageUrl: null,
+            qualityScore: analysisResult.score,
+            safetyScore: analysisResult.score,
+            organicType: 'N/A',
+            positiveIngredients: JSON.parse(JSON.stringify(analysisResult.positive_ingredients)),
+            negativeIngredients: JSON.parse(JSON.stringify(analysisResult.negative_ingredients)),
+            verdict: analysisResult.verdict,
+            healthierAlternative: analysisResult.healthier_alternative
+              ? JSON.parse(JSON.stringify(analysisResult.healthier_alternative))
+              : undefined,
+          },
+        });
+        console.log('Analysis saved to database for user:', session.user.id);
+      } catch (dbError) {
+        console.error('Failed to save analysis to database:', dbError);
       }
-    }).catch((authError) => {
-      console.error('Auth check failed:', authError);
-    });
+    }
 
-    return response;
+    return NextResponse.json(analysisResult, { status: 200 });
   } catch (error) {
     console.error('Analysis error:', error);
 

@@ -18,7 +18,7 @@ const providers: Provider[] = [
       const password = credentials?.password as string | undefined;
 
       if (!email || !password) {
-        throw new Error('Please enter both email and password');
+        return null;
       }
 
       try {
@@ -26,14 +26,14 @@ const providers: Provider[] = [
           where: { email },
         });
 
-        if (!user || !user.password) {
-          throw new Error('No account found with this email');
+        if (!user?.password) {
+          return null;
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
-          throw new Error('Incorrect password');
+          return null;
         }
 
         return {
@@ -42,11 +42,8 @@ const providers: Provider[] = [
           name: user.name,
         };
       } catch (error) {
-        if (error instanceof Error && error.message.includes('account')) {
-          throw error;
-        }
         console.error('Auth error:', error);
-        throw new Error('Authentication failed. Please try again.');
+        return null;
       }
     },
   }),
@@ -65,6 +62,7 @@ if (googleEnabled) {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: 'jwt',
