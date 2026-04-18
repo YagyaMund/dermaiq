@@ -1,34 +1,49 @@
 import { PrismaClient } from '@prisma/client';
 
+/** Read env at runtime (avoids build-time inlining missing values on some hosts). */
+function env(...keys: string[]): string {
+  for (const key of keys) {
+    const v = process.env[key]?.trim();
+    if (v) return v;
+  }
+  return '';
+}
+
 /**
- * Prisma reads `env("DATABASE_URL")` from the schema at runtime; it must be non-empty.
- * Vercel Postgres / Supabase often set `POSTGRES_PRISMA_URL` (pooled) without `DATABASE_URL`.
- * Sync those into `DATABASE_URL` / `DIRECT_URL` before the client is created.
+ * Prisma reads `env("DATABASE_URL")` from the schema; it must be non-empty at runtime.
+ * Map common Vercel / Neon / Supabase variable names onto DATABASE_URL / DIRECT_URL.
  */
 function syncDatabaseEnv(): void {
-  const pooled =
-    process.env.POSTGRES_PRISMA_URL?.trim() ||
-    process.env.PRISMA_DATABASE_URL?.trim() ||
-    process.env.POSTGRES_URL?.trim() ||
-    process.env.DATABASE_URL?.trim() ||
-    '';
+  const pooled = env(
+    'DATABASE_URL',
+    'POSTGRES_PRISMA_URL',
+    'PRISMA_DATABASE_URL',
+    'POSTGRES_URL',
+    'NEON_DATABASE_URL',
+    'SUPABASE_DATABASE_URL',
+    'SUPABASE_DB_URL',
+  );
 
-  if (pooled && !process.env.DATABASE_URL?.trim()) {
+  if (pooled && !env('DATABASE_URL')) {
     process.env.DATABASE_URL = pooled;
   }
 
-  const direct =
-    process.env.DIRECT_URL?.trim() ||
-    process.env.POSTGRES_URL_NON_POOLING?.trim() ||
-    process.env.POSTGRES_URL?.trim() ||
-    '';
+  const direct = env(
+    'DIRECT_URL',
+    'POSTGRES_URL_NON_POOLING',
+    'DATABASE_URL_UNPOOLED',
+    'NEON_DATABASE_URL_UNPOOLED',
+    'SUPABASE_DATABASE_URL_UNPOOLED',
+    'POSTGRES_URL',
+  );
 
-  if (direct && !process.env.DIRECT_URL?.trim()) {
+  if (direct && !env('DIRECT_URL')) {
     process.env.DIRECT_URL = direct;
   }
 
-  if (process.env.DATABASE_URL?.trim() && !process.env.DIRECT_URL?.trim()) {
-    process.env.DIRECT_URL = process.env.DATABASE_URL;
+  const dbUrl = env('DATABASE_URL');
+  if (dbUrl && !env('DIRECT_URL')) {
+    process.env.DIRECT_URL = dbUrl;
   }
 }
 
@@ -38,10 +53,14 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(): PrismaClient {
   syncDatabaseEnv();
-  const databaseUrl = process.env.DATABASE_URL?.trim() || '';
+  const databaseUrl = env('DATABASE_URL');
   if (!databaseUrl) {
     throw new Error(
-      'Missing database URL. In Vercel → Project → Settings → Environment Variables, set one of: DATABASE_URL, POSTGRES_URL, or POSTGRES_PRISMA_URL (from Vercel Postgres or your provider). Redeploy after saving.',
+      [
+        'Database URL is not configured for this deployment.',
+        'In Vercel: Project → Settings → Environment Variables, add DATABASE_URL (or connect Vercel Postgres / Neon so POSTGRES_URL or NEON_DATABASE_URL is set).',
+        'Enable it for Production (and Preview if you use preview URLs), then Redeploy.',
+      ].join(' '),
     );
   }
   return new PrismaClient({
