@@ -9,6 +9,7 @@ function syncDatabaseEnv(): void {
   const pooled =
     process.env.POSTGRES_PRISMA_URL?.trim() ||
     process.env.PRISMA_DATABASE_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim() ||
     process.env.DATABASE_URL?.trim() ||
     '';
 
@@ -40,7 +41,7 @@ function createPrismaClient(): PrismaClient {
   const databaseUrl = process.env.DATABASE_URL?.trim() || '';
   if (!databaseUrl) {
     throw new Error(
-      'Missing database URL. Set DATABASE_URL or POSTGRES_PRISMA_URL in Vercel Project → Settings → Environment Variables.',
+      'Missing database URL. In Vercel → Project → Settings → Environment Variables, set one of: DATABASE_URL, POSTGRES_URL, or POSTGRES_PRISMA_URL (from Vercel Postgres or your provider). Redeploy after saving.',
     );
   }
   return new PrismaClient({
