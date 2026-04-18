@@ -55,6 +55,7 @@ function LoginForm() {
           email: formData.email,
           password: formData.password,
           redirect: false,
+          callbackUrl: '/',
         });
 
         if (result?.error) {
@@ -80,6 +81,7 @@ function LoginForm() {
             email: formData.email,
             password: formData.password,
             redirect: false,
+            callbackUrl: '/',
           });
 
           if (result?.error) {

@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
 function syncDatabaseEnv(): void {
   const pooled =
     process.env.POSTGRES_PRISMA_URL?.trim() ||
+    process.env.PRISMA_DATABASE_URL?.trim() ||
     process.env.DATABASE_URL?.trim() ||
     '';
 
@@ -30,23 +31,19 @@ function syncDatabaseEnv(): void {
   }
 }
 
-syncDatabaseEnv();
-
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const databaseUrl = process.env.DATABASE_URL?.trim() || '';
-
-if (!databaseUrl) {
-  throw new Error(
-    'Missing database URL. Set DATABASE_URL or POSTGRES_PRISMA_URL in your environment (.env.local, Vercel env, etc.).',
-  );
-}
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient(): PrismaClient {
+  syncDatabaseEnv();
+  const databaseUrl = process.env.DATABASE_URL?.trim() || '';
+  if (!databaseUrl) {
+    throw new Error(
+      'Missing database URL. Set DATABASE_URL or POSTGRES_PRISMA_URL in Vercel Project → Settings → Environment Variables.',
+    );
+  }
+  return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
@@ -54,5 +51,21 @@ export const prisma =
       },
     },
   });
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+/**
+ * Lazy client so importing this module during `next build` does not require DB env
+ * (Vercel builds may omit secrets until runtime unless copied to Build env).
+ */
+function getPrisma(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getPrisma(), prop, receiver);
+  },
+}) as PrismaClient;
