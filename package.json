@@ -11,7 +11,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "deploy": "npx vercel --prod"
+    "deploy": "npx vercel --prod",
+    "catalog:seed": "npx tsx scripts/seed-skincare-catalog-obf.ts",
+    "catalog:backfill": "npx tsx scripts/backfill-catalog-scores.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -27,6 +29,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

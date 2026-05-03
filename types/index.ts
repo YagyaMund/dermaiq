@@ -30,6 +30,8 @@ export interface AnalysisResult {
   negative_ingredients: IngredientCategory[];
   verdict: string;
   healthier_alternative?: HealthierAlternative | null;
+  /** True when the payload was served from `SkincareProductCatalog` (no scoring API calls). */
+  from_catalog_cache?: boolean;
 }
 
 export interface AnalysisError {

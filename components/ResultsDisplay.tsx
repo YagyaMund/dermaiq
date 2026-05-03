@@ -149,6 +149,11 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
             >
               {result.product_type?.replace(/_/g, ' ') || 'Cosmetic Product'}
             </p>
+            {result.from_catalog_cache ? (
+              <p className="text-[11px] sm:text-xs mt-1.5 text-emerald-700/90 dark:text-emerald-400/90">
+                Served from product catalog (no live scoring call)
+              </p>
+            ) : null}
           </div>
           <div className="flex-shrink-0 flex flex-col items-center gap-1">
             <div

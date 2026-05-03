@@ -68,11 +68,14 @@ curl -X POST http://localhost:3000/api/analyze \
   ],
   "negative_ingredients": [],
   "verdict": "Short consumer-facing summary (2–3 sentences).",
-  "healthier_alternative": null
+  "healthier_alternative": null,
+  "from_catalog_cache": false
 }
 ```
 
 When `score` is below 50, `healthier_alternative` may be an object: `product_name`, `brand`, `estimated_score`, `reason`, optional `image_url`.
+
+When the response was loaded from the global **skincare product catalog** (cache hit), the JSON may include `"from_catalog_cache": true`, and the response header `X-DermaIQ-Catalog-Cache: hit` is set (miss → `miss`).
 
 **Response Fields**:
 
@@ -86,6 +89,7 @@ When `score` is below 50, `healthier_alternative` may be an object: `product_nam
 | `negative_ingredients` | array | `{ category, items: [{ name, concern?, risk_level? }] }` |
 | `verdict` | string | Overall assessment |
 | `healthier_alternative` | object \| null | Optional cleaner alternative if score &lt; 50 |
+| `from_catalog_cache` | boolean (optional) | `true` if score/ingredients served from DB cache |
 
 #### Error Responses
 

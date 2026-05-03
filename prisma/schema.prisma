@@ -61,6 +61,26 @@ model Session {
   @@map("sessions")
 }
 
+// Global skincare product cache (separate from per-user Analysis history).
+// Populated by user scans and optional Open Beauty Facts seed + score backfill.
+model SkincareProductCatalog {
+  id           String   @id @default(cuid())
+  lookupKey    String   @unique
+  displayName  String
+  productType  String
+  ingredients  Json // string[] INCI
+  analysisJson Json? // full AnalysisResult when scored
+  score        Int?
+  source       String   @default("user_scan") // user_scan | open_beauty_facts | backfill
+  externalId   String?  @unique // e.g. Open Beauty Facts barcode
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([score])
+  @@map("skincare_product_catalog")
+}
+
 // Product Analysis History
 model Analysis {
   id          String   @id @default(cuid())

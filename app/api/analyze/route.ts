@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAI, VISION_MODEL, TEXT_MODEL } from '@/lib/openai';
+import { getOpenAI, VISION_MODEL } from '@/lib/openai';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
@@ -9,10 +9,10 @@ import {
   VISION_SKINCARE_SYSTEM,
   buildVisionSkincareUserPrompt,
 } from '@/lib/prompts/vision-skincare';
-import { buildSkincareScoringSystemPrompt } from '@/lib/prompts/scoring-skincare';
-import { runSkincareMethodologyDigestStep } from '@/lib/prompts/methodology-step';
+import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
+import { makeCatalogLookupKey } from '@/lib/catalog/lookup-key';
+import { findCachedSkincareAnalysis, upsertSkincareCatalogEntry } from '@/lib/catalog/catalog-service';
 
-// Validation schemas
 const SkincareProductTypeZ = z.enum(SKINCARE_PRODUCT_TYPES);
 
 const VisionResultSchema = z.object({
@@ -23,38 +23,7 @@ const VisionResultSchema = z.object({
   is_skincare: z.boolean(),
 });
 
-const IngredientItemSchema = z.object({
-  name: z.string(),
-  benefit: z.string().optional(),
-  concern: z.string().optional(),
-  risk_level: z.enum(['green', 'yellow', 'orange', 'red']).optional(),
-});
-
-const IngredientCategorySchema = z.object({
-  category: z.string(),
-  items: z.array(IngredientItemSchema),
-});
-
-const HealthierAlternativeSchema = z.object({
-  product_name: z.string(),
-  brand: z.string(),
-  estimated_score: z.number(),
-  reason: z.string(),
-  image_url: z.string().nullable().optional(),
-}).optional();
-
-const ScoringResultSchema = z.object({
-  product_name: z.string(),
-  product_type: z.string(),
-  detected_ingredients: z.array(z.string()),
-  score: z.number().min(0).max(100),
-  positive_ingredients: z.array(IngredientCategorySchema),
-  negative_ingredients: z.array(IngredientCategorySchema),
-  verdict: z.string(),
-  healthier_alternative: HealthierAlternativeSchema.nullable().optional(),
-});
-
-/** Vision + methodology digest + scoring (three model calls). */
+/** Vision + optional cache hit, or methodology digest + scoring (up to three model calls). */
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
@@ -89,7 +58,6 @@ export async function POST(request: NextRequest) {
     const base64Image = buffer.toString('base64');
     const imageUrl = `data:${image.type};base64,${base64Image}`;
 
-    // Step 1: Identify product and research its ingredients
     console.log('Step 1: Identifying product and researching ingredients...');
     const openai = getOpenAI();
     const visionResponse = await openai.chat.completions.create({
@@ -137,7 +105,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Reject anything that is not in-scope skincare (hair, makeup, drugs, etc.)
     if (!visionData.is_skincare || visionData.product_type === 'not_skincare') {
       return NextResponse.json(
         {
@@ -158,107 +125,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 1b: Full methodology digest (must run before final scoring per product policy)
-    console.log('Step 1b: Skincare methodology digest (Yuka-aligned reference)...');
-    const methodologyDigest = await runSkincareMethodologyDigestStep(openai, {
-      product_name: visionData.product_name,
-      product_type: visionData.product_type,
-      ingredients: visionData.ingredients,
-    });
-
-    // Step 2: Analyze ingredients using risk-based scoring (highest-risk ingredient sets range)
-    console.log('Step 2: Analyzing ingredients (risk-based scoring)...');
-    const ingredientCount = visionData.ingredients.length;
-
-    const scoringSystemPrompt = buildSkincareScoringSystemPrompt();
-
-    const scoringResponse = await openai.chat.completions.create({
-      model: TEXT_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: scoringSystemPrompt,
-        },
-        {
-          role: 'user',
-          content: `=== METHODOLOGY DIGEST (from prior step — honor this) ===
-${methodologyDigest.alignment_summary}
-${methodologyDigest.titanium_dioxide_notes ? `\nTitanium dioxide notes: ${methodologyDigest.titanium_dioxide_notes}\n` : ''}
-=== END DIGEST ===
-
-Analyze this ${visionData.product_type} product using the risk-based scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
-
-Product: ${visionData.product_name}
-Type: ${visionData.product_type}
-Total Ingredient Count: ${ingredientCount}
-Full Ingredient List (INCI): ${visionData.ingredients.join(', ')}
-
-You MUST:
-1. Classify each ingredient as green/yellow/orange/red based on health and environment risks
-2. Determine the score range from the highest-risk ingredient, then set exact score within that range using penalties from other ingredients
-3. Group positive ingredients by category with simple names and benefits
-4. Group negative ingredients by category with simple names, risk levels, and concerns
-5. Write an honest 2-3 sentence verdict for regular consumers
-6. If score < 50, suggest a healthier alternative product
-
-Use SIMPLE everyday names (e.g. "Vitamin E" not "Tocopheryl Acetate", "Shea Butter" not "Butyrospermum Parkii").
-For negative ingredients, include the technical name in brackets (e.g. "Sulfates [SLS/SLES]").
-
-Return STRICTLY in this JSON format:
-{
-  "product_name": "${visionData.product_name}",
-  "product_type": "${visionData.product_type}",
-  "detected_ingredients": ["ingredient1", "ingredient2", ...],
-  "score": <number 0-100, calculated using the penalty system>,
-  "positive_ingredients": [
-    {
-      "category": "Moisturizers & Hydrators",
-      "items": [
-        { "name": "Simple name", "benefit": "Simple explanation", "risk_level": "green" }
-      ]
-    }
-  ],
-  "negative_ingredients": [
-    {
-      "category": "Fragrances & Scents",
-      "items": [
-        { "name": "Simple name [Technical name]", "concern": "Simple explanation", "risk_level": "orange" }
-      ]
-    }
-  ],
-  "verdict": "Honest 2-3 sentence summary",
-  "healthier_alternative": ${'{'}
-    "product_name": "Full Product Name",
-    "brand": "Brand Name",
-    "estimated_score": <number>,
-    "reason": "Why this is a better choice",
-    "image_url": "https://example.com/product-image.jpg" OR null
-  ${'}'} OR null if score >= 50
-}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      max_tokens: 3500,
-    });
-
-    const scoringContent = scoringResponse.choices[0].message.content;
-    if (!scoringContent) {
-      throw new Error('No response from scoring API');
-    }
+    const lookupKey = makeCatalogLookupKey(visionData.product_name);
+    const cached = await findCachedSkincareAnalysis(lookupKey);
 
     let analysisResult: AnalysisResult;
-    try {
-      const parsed = JSON.parse(scoringContent);
-      analysisResult = ScoringResultSchema.parse(parsed);
-    } catch (error) {
-      console.error('Scoring API parsing error:', error);
-      return NextResponse.json(
-        {
-          error: 'Could not generate product analysis',
-          details: 'An error occurred while scoring the ingredients.',
-        },
-        { status: 500 }
-      );
+
+    if (cached) {
+      console.log('Catalog cache HIT for lookupKey:', lookupKey);
+      analysisResult = { ...cached, from_catalog_cache: true };
+    } else {
+      console.log('Step 1b–2: Methodology digest + scoring (cache miss)...');
+      analysisResult = await scoreSkincareFromVision(openai, visionData);
+      analysisResult = { ...analysisResult, from_catalog_cache: false };
+
+      await upsertSkincareCatalogEntry({
+        lookupKey,
+        vision: visionData,
+        analysis: analysisResult,
+        source: 'user_scan',
+      });
     }
 
     const session = await auth();
@@ -287,7 +172,14 @@ Return STRICTLY in this JSON format:
       }
     }
 
-    return NextResponse.json(analysisResult, { status: 200 });
+    const headers = new Headers();
+    if (analysisResult.from_catalog_cache) {
+      headers.set('X-DermaIQ-Catalog-Cache', 'hit');
+    } else {
+      headers.set('X-DermaIQ-Catalog-Cache', 'miss');
+    }
+
+    return NextResponse.json(analysisResult, { status: 200, headers });
   } catch (error) {
     console.error('Analysis error:', error);
 
