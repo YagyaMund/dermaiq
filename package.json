@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "deploy": "NODE_TLS_REJECT_UNAUTHORIZED=0 npx vercel --prod --scope yagyas-projects-9fce8811"
+    "deploy": "npx vercel --prod"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

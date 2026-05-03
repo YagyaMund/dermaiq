@@ -299,6 +299,24 @@ Error: Function execution timeout
 
 ---
 
+## Vercel CLI & TLS
+
+### Issue: `unable to get local issuer certificate` (Vercel CLI / Node)
+
+**Cause:** Node does not trust the TLS chain (VPN, corporate SSL inspection, or a missing custom CA).
+
+**Fix (preferred):**
+
+1. Use a network without TLS interception, or install your IT department’s root CA and set:
+   ```bash
+   export NODE_EXTRA_CA_CERTS=/path/to/company-root-ca.pem
+   ```
+2. Retry `vercel login` or `npx vercel --prod`.
+
+**Avoid:** `NODE_TLS_REJECT_UNAUTHORIZED=0` — it disables certificate verification and is unsafe for routine use.
+
+---
+
 ## Development Issues
 
 ### Issue: Hot reload not working
@@ -351,4 +369,4 @@ Contact support with:
 
 ---
 
-Last updated: 2024-02-15
+Last updated: 2026-05-03

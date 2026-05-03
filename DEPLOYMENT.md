@@ -62,6 +62,14 @@ Vercel is the easiest way to deploy your Next.js application.
    ```bash
    vercel --prod
    ```
+   To deploy under a specific Vercel team, add `--scope <team-slug>` (from the team URL on the dashboard).
+
+### Vercel CLI: `unable to get local issuer certificate`
+
+This comes from Node not trusting your TLS chain (common on VPNs or corporate SSL inspection). Prefer fixing trust instead of disabling verification:
+
+1. Try a network without SSL inspection, or set `NODE_EXTRA_CA_CERTS` to your organization’s root CA PEM file for that terminal session.
+2. Do **not** rely on `NODE_TLS_REJECT_UNAUTHORIZED=0` for deploys or production.
 
 ## Deploy to Other Platforms
 

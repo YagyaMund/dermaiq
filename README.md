@@ -1,16 +1,16 @@
 # DermaIQ - AI Product Image Analyzer
 
-An AI-powered web application that analyzes skincare and cosmetic product images to extract ingredients and provide quality insights.
+An AI-powered web application that analyzes **skincare** product images, extracts INCI-style ingredients, and scores them with a **Yuka-aligned** risk methodology (see `SCORING_ALGORITHM.md`).
 
 ## Features
 
-- 📸 **Image Upload**: Upload product images (JPEG/PNG, max 5MB)
-- 🤖 **AI-Powered Analysis**: Uses OpenAI Vision API to extract product information
-- 🧪 **Ingredient Detection**: Automatically identifies and lists ingredients
-- 📊 **Quality Scoring**: Provides quality and safety scores (0-100)
-- 🌿 **Organic Classification**: Categorizes products as Organic, Inorganic, Mixed, or Unknown
-- 💡 **Detailed Explanations**: AI-generated insights for each score
-- 🎨 **Modern UI**: Beautiful, responsive design with dark mode support
+- 📸 **Image Upload**: JPEG/PNG, max 5MB
+- 🤖 **AI pipeline**: Vision (product + INCI) → methodology digest → risk-based score
+- 🧪 **Skincare-only**: Hair, makeup-as-makeup, oral care, etc. are rejected with a clear message
+- 📊 **Single score (0–100)**: Red / orange / green bands from highest-risk ingredient + penalties
+- 💡 **Verdict & categories**: Grouped positives/negatives and optional healthier alternative when score &lt; 50
+- 🔐 **Auth**: Sign-in and history (when database and NextAuth are configured)
+- 🎨 **Responsive UI** with dark mode
 
 ## Tech Stack
 
@@ -23,7 +23,7 @@ An AI-powered web application that analyzes skincare and cosmetic product images
 
 ## Prerequisites
 
-- Node.js 18+ 
+- Node.js 20+ (see `package.json` engines)
 - npm or yarn
 - OpenAI API key
 
@@ -69,7 +69,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 1. **Upload Image**: Click the upload area or drag and drop a product image
 2. **Analyze**: Click "Analyze Product" to start the AI analysis
-3. **View Results**: Review the quality scores, safety ratings, and ingredient list
+3. **View Results**: Review score, ingredient breakdown, and verdict
 4. **Try Another**: Click "Analyze Another Product" to start over
 
 ## Project Structure
@@ -86,7 +86,8 @@ product-scan-ai/
 ├── components/
 │   └── ResultsDisplay.tsx         # Results display component
 ├── lib/
-│   └── openai.ts                  # OpenAI client configuration
+│   ├── openai.ts                  # Models + OpenAI client
+│   └── prompts/                   # Vision, Yuka methodology, scoring prompts
 ├── types/
 │   └── index.ts                   # TypeScript type definitions
 ├── .env.local                     # Environment variables (not in git)
@@ -104,24 +105,7 @@ Analyzes a product image and returns detailed insights.
 - Content-Type: `multipart/form-data`
 - Body: `image` (File)
 
-**Response:**
-```json
-{
-  "product_name": "Example Product",
-  "ingredients": ["Ingredient A", "Ingredient B"],
-  "scores": {
-    "quality": 78,
-    "safety": 70,
-    "organic": "Mixed"
-  },
-  "verdict": "Moderate quality product with some inorganic components.",
-  "explanations": {
-    "quality": "Based on ingredient sourcing and processing.",
-    "safety": "Some additives may cause sensitivity.",
-    "organic": "Contains both natural and synthetic ingredients."
-  }
-}
-```
+**Response (200):** See `types/index.ts` / `API.md`. Shape includes `product_name`, `product_type`, `detected_ingredients`, `score`, `positive_ingredients`, `negative_ingredients`, `verdict`, optional `healthier_alternative`.
 
 **Error Response:**
 ```json
@@ -133,14 +117,11 @@ Analyzes a product image and returns detailed insights.
 
 ## How It Works
 
-1. **Image Upload**: User uploads a skincare/cosmetic product image
-2. **Vision Analysis**: OpenAI Vision model extracts product name and ingredients
-3. **Ingredient Scoring**: AI analyzes ingredients and generates:
-   - Quality Score (0-100)
-   - Safety Score (0-100)
-   - Organic Classification
-   - Detailed explanations
-4. **Results Display**: User sees comprehensive analysis with scores and insights
+1. **Image upload** of a skincare product
+2. **Vision**: identify SKU, skincare `product_type`, full INCI list
+3. **Methodology digest** (small model): confirms Yuka-aligned rules for this product
+4. **Scoring** (main model): risk dots, band, penalties, grouped ingredients, verdict
+5. **Results** in the UI; logged-in users may persist an analysis row in Postgres
 
 ## Deployment
 
@@ -173,7 +154,7 @@ OPENAI_API_KEY=your_openai_api_key
 Edit `app/api/analyze/route.ts`:
 
 ```typescript
-export const maxDuration = 30; // seconds (Vercel limit)
+export const maxDuration = 60; // seconds — vision + digest + scoring (Vercel plan limits apply)
 ```
 
 ### Change AI Models
@@ -182,22 +163,22 @@ Edit `lib/openai.ts`:
 
 ```typescript
 export const VISION_MODEL = 'gpt-4o'; // or 'gpt-4-vision-preview'
-export const TEXT_MODEL = 'gpt-4o';   // or 'gpt-4-turbo'
+export const TEXT_MODEL = 'gpt-4o';
+export const METHODOLOGY_DIGEST_MODEL = 'gpt-4o-mini'; // see lib/openai.ts
 ```
 
 ## Limitations (MVP)
 
 - Single image analysis only
-- No user authentication
-- No product history
+- Auth and history require env + database setup (see `DATABASE_SETUP.md`, `AUTH_SETUP.md`)
 - No barcode scanning
 - AI estimates may not be 100% accurate
 - Results are for informational purposes only
 
 ## Future Enhancements
 
-- [ ] User accounts and authentication
-- [ ] Product history tracking
+- [ ] Curated SKU catalog (e.g. high-traffic India skincare) for faster lookup
+- [ ] Richer product history and export
 - [ ] Barcode scanning
 - [ ] Batch analysis
 - [ ] Export results as PDF
@@ -212,8 +193,8 @@ export const TEXT_MODEL = 'gpt-4o';   // or 'gpt-4-turbo'
 ## Cost Considerations
 
 - OpenAI Vision API calls are more expensive than text-only calls
-- Each analysis makes 2 API calls (Vision + Text)
-- Estimated cost: ~$0.01-0.03 per analysis (depending on image size)
+- Each analysis uses **three** model calls (vision + digest + scoring)
+- Cost scales with image/tokens; monitor usage in the OpenAI dashboard
 - Consider implementing rate limiting for production use
 
 ## Troubleshooting

@@ -13,7 +13,7 @@ Complete API reference for DermaIQ Product Image Analyzer.
 
 ### POST /api/analyze
 
-Analyzes a skincare/cosmetic product image and returns ingredient analysis with quality scores.
+Analyzes a **skincare** product image and returns a single **score** (0–100), grouped ingredients, and a verdict. Non-skincare items receive **422** with an explanation.
 
 #### Request
 
@@ -54,48 +54,38 @@ curl -X POST http://localhost:3000/api/analyze \
 
 ```json
 {
-  "product_name": "CeraVe Moisturizing Cream",
-  "ingredients": [
-    "Aqua",
-    "Glycerin",
-    "Cetearyl Alcohol",
-    "Caprylic/Capric Triglyceride",
-    "Cetyl Alcohol",
-    "Dimethicone",
-    "Phenoxyethanol",
-    "Ceramide NP",
-    "Ceramide AP",
-    "Ceramide EOP",
-    "Hyaluronic Acid",
-    "Cholesterol"
+  "product_name": "Example Moisturizer",
+  "product_type": "moisturizer",
+  "detected_ingredients": ["Aqua", "Glycerin", "..."],
+  "score": 72,
+  "positive_ingredients": [
+    {
+      "category": "Moisturizers & Hydrators",
+      "items": [
+        { "name": "Glycerin", "benefit": "Humectant; helps retain water.", "risk_level": "green" }
+      ]
+    }
   ],
-  "scores": {
-    "quality": 82,
-    "safety": 88,
-    "organic": "Mixed"
-  },
-  "verdict": "High-quality moisturizer with proven ceramides and hyaluronic acid. Formulation is well-balanced with effective humectants and occlusives. Contains some synthetic preservatives but overall safe for most skin types.",
-  "explanations": {
-    "quality": "Contains three essential ceramides (NP, AP, EOP) which are clinically proven to repair skin barrier. Hyaluronic acid provides excellent hydration. Well-formulated with both humectants and emollients.",
-    "safety": "Generally safe formulation. Phenoxyethanol is a commonly used preservative with good safety profile. Fragrance-free reduces risk of sensitivity. Suitable for sensitive skin.",
-    "organic": "Mix of naturally-derived ingredients (ceramides from plant sources, hyaluronic acid) and synthetic components (preservatives, emollifiers). Not certified organic but uses biomimetic ingredients."
-  }
+  "negative_ingredients": [],
+  "verdict": "Short consumer-facing summary (2–3 sentences).",
+  "healthier_alternative": null
 }
 ```
+
+When `score` is below 50, `healthier_alternative` may be an object: `product_name`, `brand`, `estimated_score`, `reason`, optional `image_url`.
 
 **Response Fields**:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `product_name` | string | Identified product name |
-| `ingredients` | string[] | Array of detected ingredients |
-| `scores.quality` | number | Quality score (0-100) |
-| `scores.safety` | number | Safety score (0-100) |
-| `scores.organic` | string | Classification: "Organic", "Inorganic", "Mixed", or "Unknown" |
-| `verdict` | string | Overall assessment (2-3 sentences) |
-| `explanations.quality` | string | Detailed quality analysis |
-| `explanations.safety` | string | Detailed safety analysis |
-| `explanations.organic` | string | Organic classification explanation |
+| `product_type` | string | Skincare category (e.g. `cleanser`, `serum`, `sunscreen`) |
+| `detected_ingredients` | string[] | INCI list used for scoring |
+| `score` | number | Single score 0–100 (risk bands: red &lt;25, orange &lt;50, green 50–100) |
+| `positive_ingredients` | array | `{ category, items: [{ name, benefit?, risk_level? }] }` |
+| `negative_ingredients` | array | `{ category, items: [{ name, concern?, risk_level? }] }` |
+| `verdict` | string | Overall assessment |
+| `healthier_alternative` | object \| null | Optional cleaner alternative if score &lt; 50 |
 
 #### Error Responses
 
@@ -123,21 +113,26 @@ curl -X POST http://localhost:3000/api/analyze \
 }
 ```
 
-**422 Unprocessable Entity** - Could Not Parse Image:
+**422 Unprocessable Entity** — Not skincare / could not identify / no ingredients:
 
 ```json
 {
-  "error": "Could not parse product information from image",
-  "details": "The image may not contain a clear product label with ingredients."
+  "error": "This product is not in-scope skincare for DermaIQ",
+  "details": "…"
 }
 ```
 
-**422 Unprocessable Entity** - No Ingredients Detected:
+```json
+{
+  "error": "Could not identify the product from the image",
+  "details": "Please make sure the product is clearly visible in the image."
+}
+```
 
 ```json
 {
-  "error": "Ingredients could not be confidently identified",
-  "details": "Please ensure the product label with ingredients list is clearly visible."
+  "error": "Could not identify ingredients for this product",
+  "details": "Please ensure the product label is clearly visible, or try a different angle."
 }
 ```
 
