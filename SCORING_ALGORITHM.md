@@ -1,54 +1,65 @@
-# Scoring Algorithm
+# Scoring Algorithm (skincare, Yuka-aligned)
 
-Local interface for cosmetic product scoring. No organic/synthetic classification is used.
+DermaIQ scores **skincare products only** (see vision gate in `app/api/analyze/route.ts`). The numeric model follows the public methodology described in Yuka’s English help articles on cosmetic evaluation and penalties (condensed in `lib/prompts/yuka-skincare-methodology.ts`, with URLs in that file).
+
+## Pipeline order
+
+1. **Vision** — Must output `is_skincare: true` and a `product_type` in the allowed skincare enum; otherwise **422** (no score).
+2. **Methodology digest** (LLM, `gpt-4o-mini`) — Reads the full reference text and writes a short `alignment_summary` (and optional titanium dioxide notes).
+3. **Scoring** (LLM, `gpt-4o`) — System prompt embeds the same reference again (PART A) plus role/output rules (PART B). User message includes the digest from step 2 so the scorer explicitly “sees” the pre-pass.
+
+Database writes (logged-in users) still store one `score` as both quality and safety for compatibility (`prisma.analysis`).
 
 ## Risk levels (per ingredient)
 
-Each ingredient is classified into one of four risk levels based on current science (health and environment):
+| Level         | Dot    | Description |
+|---------------|--------|--------------|
+| Risk-free     | Green  | No known concerns under current science |
+| Low risk      | Yellow | Minor / suspected concerns |
+| Moderate risk | Orange | Notable concerns (endocrine, carcinogen suspicion, allergen, irritant, pollutant, etc.) |
+| High-risk     | Red    | Strong evidence / severe hazard drivers |
 
-| Level    | Dot   | Description |
-|----------|--------|-------------|
-| Risk-free | Green  | No known concerns |
-| Low risk  | Yellow | Minor concerns (e.g. mild allergen, mild irritant) |
-| Moderate risk | Orange | Notable concerns (e.g. endocrine disruption, carcinogenic, allergenic, irritant, pollutant) |
-| High-risk | Red    | Hazardous (e.g. confirmed endocrine disruptor, carcinogen, severe allergen) |
+Risks considered include **endocrine disruption**, **carcinogenic**, **allergenic**, **irritant**, **pollutant**, with **precautionary** framing when science is evolving.
 
-Risks considered: **endocrine disruption**, **carcinogenic**, **allergenic**, **irritant**, **pollutant**.  
-Details and scientific sources for each ingredient can be shown in the app.
+## Score bands (0–100)
 
-## Score (0–100)
+Driven by the **highest-risk** ingredient:
 
-The **overall score is driven by the highest-risk ingredient** in the product:
+| Condition                         | Band        | Score range |
+|----------------------------------|-------------|-------------|
+| Any **RED**                      | Red         | **0–24** (strictly &lt; 25) |
+| Highest **ORANGE**, no red       | Orange      | **0–49** (strictly &lt; 50) |
+| Only **GREEN** and/or **YELLOW** | Green       | **50–100** |
 
-- **If any high-risk (red) ingredient is present**  
-  → Score is **red**: **&lt; 25/100** (range 0–24).
+## Penalties (within the band)
 
-- **If the highest risk is moderate (orange)**  
-  → Score is **orange**: **&lt; 50/100** (range 0–49).
+Aligned with Yuka’s penalty article (see reference file):
 
-- **If the highest risk is low (yellow) or risk-free (green)**  
-  → Score can be in the **green band**: **50–100**.
+**Green band only (green + yellow ingredients):**
 
-Within each range, **other ingredients** (and their risk levels) determine the **exact** score via penalties (e.g. more yellow/orange/red ingredients lower the score within the allowed band).
+- −10: potential carcinogen / endocrine concern (yellow-tier suspicion as per reference).
+- −7: several of allergen, irritant, other health effect, pollutant.
+- −2: only one of allergen, irritant, other health effect, pollutant.
 
-## API / types (local contract)
+**When orange/red is present** (band already 0–49 or 0–24), further deductions from *other* ingredients include −12 / −8 / −6 / −4 / −3 / −2 per the reference table (highest single penalty per ingredient; no stacking multiple risk types on the same INCI).
 
-- **Input**: Product name, product type, list of ingredients (INCI).
-- **Output**:
-  - `score`: number 0–100 (integer).
-  - `positive_ingredients` / `negative_ingredients`: arrays of `{ category, items: [{ name, benefit?, concern?, risk_level?: 'green'|'yellow'|'orange'|'red' }] }`.
-  - `verdict`: string.
-  - `healthier_alternative`: optional (e.g. when score &lt; 50).
-- **Removed**: No `organic` / `synthetic` / organic type in the response; DB may still store a fixed value (e.g. `organicType: 'N/A'`) for compatibility.
+**Short INCI lists (about ≤3 ingredients):** apply stricter effective penalties within the band (risky fraction is large).
 
-## Score bands (UI)
+## Organic label, quantity, special cases
 
-| Score   | Band    | Label (example) |
-|---------|---------|------------------|
-| 0–24    | Red     | Very poor        |
-| 25–49   | Orange  | Poor             |
-| 50–64   | Fair    | Fair             |
-| 65–79   | Good    | Good             |
-| 80–100  | Green   | Excellent        |
+- **Organic / natural claims** do not change the score by themselves; only INCI risk counts.
+- **Concentrations** are not inferred from INCI order.
+- **Titanium dioxide:** differentiate **nano** (e.g. `[nano]` in INCI), sprays vs creams, oral vs skin-only context per reference.
+- **Out of scope** products (cleaners, supplements, diapers, pads, drugs) are excluded before scoring.
 
-These bands align with “red &lt; 25”, “orange &lt; 50”, and “green 50–100” from the algorithm above.
+## API contract
+
+Unchanged consumer JSON: `score`, `positive_ingredients`, `negative_ingredients`, `verdict`, optional `healthier_alternative`.
+
+## Planned: India top-skincare catalog
+
+Seeding **~10,000** frequently used **skincare** SKUs for India is **not** part of the runtime path yet; when added, each row should be scored with this same pipeline or a batch equivalent.
+
+## UI score labels
+
+UI may still use coarse labels (e.g. Excellent / Good) on the 0–100 scale; align colors with red &lt; 25, orange &lt; 50, green ≥ 50 where possible.

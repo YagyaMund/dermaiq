@@ -4,14 +4,23 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import type { AnalysisResult, VisionExtractionResult } from '@/types';
+import {
+  SKINCARE_PRODUCT_TYPES,
+  VISION_SKINCARE_SYSTEM,
+  buildVisionSkincareUserPrompt,
+} from '@/lib/prompts/vision-skincare';
+import { buildSkincareScoringSystemPrompt } from '@/lib/prompts/scoring-skincare';
+import { runSkincareMethodologyDigestStep } from '@/lib/prompts/methodology-step';
 
 // Validation schemas
+const SkincareProductTypeZ = z.enum(SKINCARE_PRODUCT_TYPES);
+
 const VisionResultSchema = z.object({
   product_name: z.string(),
-  product_type: z.string(),
+  product_type: SkincareProductTypeZ,
   ingredients: z.array(z.string()),
   confidence: z.string(),
-  is_cosmetic: z.boolean(),
+  is_skincare: z.boolean(),
 });
 
 const IngredientItemSchema = z.object({
@@ -45,7 +54,8 @@ const ScoringResultSchema = z.object({
   healthier_alternative: HealthierAlternativeSchema.nullable().optional(),
 });
 
-export const maxDuration = 30;
+/** Vision + methodology digest + scoring (three model calls). */
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,37 +97,14 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are DermaIQ's product identification expert.
-Your job is to:
-1. Identify the product from the image (brand name, product line, variant).
-2. Determine if it is a dermatological/cosmetic product (skincare, haircare, body care, sunscreen, lip care, nail care, deodorant, oral hygiene, etc.).
-3. If it IS a cosmetic/dermatological product, research its FULL ingredient list from your knowledge base (INCI list). If ingredients are visible on the label, use those. Otherwise, provide the known formulation.
-4. If it is NOT a cosmetic/dermatological product (e.g. food, drink, medicine, supplement, cleaning product, electronics), flag it as non-cosmetic.
-
-You MUST accurately classify the product type.`,
+          content: VISION_SKINCARE_SYSTEM,
         },
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `Look at this product image. Identify the product and determine if it's a dermatological/cosmetic product.
-
-If it IS a cosmetic product (skincare, haircare, body care, sunscreen, etc.):
-- Provide the full ingredient list (INCI names)
-- If ingredients are on the label, read them. If not fully visible, use your knowledge of this product's known formulation.
-
-If it is NOT a cosmetic product (food, beverage, medicine, supplement, household cleaner, etc.):
-- Set is_cosmetic to false
-
-Return STRICTLY in this JSON format:
-{
-  "product_name": "Full Product Name",
-  "product_type": "skincare" | "haircare" | "body care" | "sunscreen" | "lip care" | "oral care" | "deodorant" | "nail care" | "fragrance" | "not_cosmetic",
-  "ingredients": ["ingredient1", "ingredient2", ...],
-  "confidence": "high" | "medium" | "low",
-  "is_cosmetic": true/false
-}`,
+              text: buildVisionSkincareUserPrompt(),
             },
             {
               type: 'image_url',
@@ -150,12 +137,12 @@ Return STRICTLY in this JSON format:
       );
     }
 
-    // Reject non-cosmetic products
-    if (!visionData.is_cosmetic || visionData.product_type === 'not_cosmetic') {
+    // Reject anything that is not in-scope skincare (hair, makeup, drugs, etc.)
+    if (!visionData.is_skincare || visionData.product_type === 'not_skincare') {
       return NextResponse.json(
         {
-          error: 'This is not a dermatological or cosmetic product',
-          details: `DermaIQ only analyzes skincare, haircare, body care, and other cosmetic products. The detected product "${visionData.product_name}" appears to be a non-cosmetic item. Please upload an image of a skincare, haircare, or beauty product.`,
+          error: 'This product is not in-scope skincare for DermaIQ',
+          details: `DermaIQ currently only scores skincare (cleansers, moisturizers, serums, sunscreens, masks, exfoliants, eye/lip treatments, hand/body moisturizers, etc.). "${visionData.product_name}" was classified as non-skincare. Try a facial or body skincare label.`,
         },
         { status: 422 }
       );
@@ -171,67 +158,35 @@ Return STRICTLY in this JSON format:
       );
     }
 
+    // Step 1b: Full methodology digest (must run before final scoring per product policy)
+    console.log('Step 1b: Skincare methodology digest (Yuka-aligned reference)...');
+    const methodologyDigest = await runSkincareMethodologyDigestStep(openai, {
+      product_name: visionData.product_name,
+      product_type: visionData.product_type,
+      ingredients: visionData.ingredients,
+    });
+
     // Step 2: Analyze ingredients using risk-based scoring (highest-risk ingredient sets range)
     console.log('Step 2: Analyzing ingredients (risk-based scoring)...');
     const ingredientCount = visionData.ingredients.length;
+
+    const scoringSystemPrompt = buildSkincareScoringSystemPrompt();
 
     const scoringResponse = await openai.chat.completions.create({
       model: TEXT_MODEL,
       messages: [
         {
           role: 'system',
-          content: `You are DermaIQ's Cosmetic Safety Analyst using a risk-based scoring method.
-
-You evaluate cosmetic products by analyzing every ingredient. Based on current science, each ingredient is assigned a risk level according to its potential effects on health or the environment: endocrine disruption, carcinogenic, allergenic, irritant, or pollutant. The potential risks and relevant scientific sources can be referenced in your concern/benefit text.
-
-INGREDIENT RISK CLASSIFICATION (four categories only):
-- GREEN (risk-free): No known concerns; safe, beneficial under current science
-- YELLOW (low risk): Minor concerns (e.g. mild allergen potential, mild irritant)
-- ORANGE (moderate risk): Notable concerns — potential endocrine disruptor, carcinogenic, allergenic, irritant, or pollutant
-- RED (high-risk): Hazardous — confirmed endocrine disruptor, known carcinogen, severe allergen, or other serious health/environment risk
-
-SCORING RULES (YOU MUST FOLLOW THIS EXACTLY):
-
-The score is based on the LEVEL OF THE HIGHEST-RISK INGREDIENT in the product.
-
-1) If ANY high-risk (red) ingredient is present:
-   → Score must be RED: strictly lower than 25/100 (range 0–24).
-   Other ingredients determine the exact score within 0–24 via penalties (e.g. more red/orange/yellow ingredients lower the score further).
-
-2) If the highest-risk ingredient is moderate (orange) — no red present:
-   → Score must be lower than 50/100 (range 0–49).
-   Other ingredients determine the exact score within 0–49 via penalties.
-
-3) If the highest-risk ingredients are only low (yellow) or risk-free (green):
-   → Score is in the green band: 50–100.
-   Other ingredients determine the exact score within 50–100 (penalties for yellow/green concerns can reduce the score within this range).
-
-Apply penalties for each ingredient’s risks (endocrine, carcinogenic, allergenic, irritant, pollutant). Use only the highest penalty per ingredient (do not sum multiple penalties for the same ingredient). Ensure the final score never goes below 0 and never exceeds the allowed range (0–24 if any red; 0–49 if any orange but no red; 50–100 if only green/yellow).
-
-INGREDIENT GROUPING:
-Group positive and negative ingredients into everyday categories (only include categories that have ingredients):
-- Moisturizers & Hydrators
-- Vitamins & Antioxidants
-- Soothing & Calming Agents
-- Natural Extracts & Oils
-- Sun Protection
-- Skin Repair
-- Fragrances & Scents
-- Preservatives & Stabilizers
-- Harsh Cleansing Agents (Sulfates)
-- Potential Allergens
-- Silicones & Film Formers
-- Colorants & Dyes
-- pH Adjusters & Buffers
-
-Do NOT use a "Synthetic Chemicals" category. Skip empty categories.
-
-HEALTHIER ALTERNATIVE:
-If the final score is below 50, suggest a healthier alternative product in the same category. The alternative should be a real, widely available product with a cleaner ingredient profile and an estimated score. If you know a direct, public image URL for the product (e.g. from the brand's or retailer's site), include it as image_url; otherwise omit image_url or set to null.`,
+          content: scoringSystemPrompt,
         },
         {
           role: 'user',
-          content: `Analyze this ${visionData.product_type} product using the risk-based scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
+          content: `=== METHODOLOGY DIGEST (from prior step — honor this) ===
+${methodologyDigest.alignment_summary}
+${methodologyDigest.titanium_dioxide_notes ? `\nTitanium dioxide notes: ${methodologyDigest.titanium_dioxide_notes}\n` : ''}
+=== END DIGEST ===
+
+Analyze this ${visionData.product_type} product using the risk-based scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
 
 Product: ${visionData.product_name}
 Type: ${visionData.product_type}

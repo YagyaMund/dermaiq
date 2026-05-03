@@ -42,5 +42,6 @@ export interface VisionExtractionResult {
   product_type: string;
   ingredients: string[];
   confidence: string;
-  is_cosmetic: boolean;
+  /** True only for in-scope skincare (see analyze API). */
+  is_skincare: boolean;
 }
