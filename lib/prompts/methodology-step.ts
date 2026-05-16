@@ -5,7 +5,7 @@ import { METHODOLOGY_DIGEST_MODEL } from '@/lib/openai';
 
 const DigestSchema = z.object({
   alignment_summary: z.string().max(2500),
-  titanium_dioxide_notes: z.string().max(800).optional(),
+  titanium_dioxide_notes: z.string().max(800).nullish(),
 });
 
 export type MethodologyDigest = z.infer<typeof DigestSchema>;
@@ -37,7 +37,8 @@ You must read the entire REFERENCE block in the user message. Then produce a con
 - Any titanium dioxide / [nano] handling implied by the INCI list and product type.
 - That unrated categories (cleaners, supplements, diapers, pads, drugs) are out of scope (already filtered).
 
-Return ONLY JSON: { "alignment_summary": string, "titanium_dioxide_notes"?: string }`,
+Return ONLY JSON: { "alignment_summary": string, "titanium_dioxide_notes"?: string }
+Omit titanium_dioxide_notes entirely (do not use null) when titanium dioxide is not in the INCI list or not relevant.`,
       },
       {
         role: 'user',
