@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
     if (!visionData.is_skincare || visionData.product_type === 'not_skincare') {
       return NextResponse.json(
         {
-          error: 'This product is not in-scope skincare for DermaIQ',
-          details: `DermaIQ currently only scores skincare (cleansers, moisturizers, serums, sunscreens, masks, exfoliants, eye/lip treatments, hand/body moisturizers, etc.). "${visionData.product_name}" was classified as non-skincare. Try a facial or body skincare label.`,
+          error: 'This product is outside DermaIQ scope',
+          details: `DermaIQ scores dermatology-related personal care: skin, scalp, and hair products (cleansers, moisturizers, serums, sunscreens, shampoos, hair oils, scalp treatments, deodorants, etc.). "${visionData.product_name}" was classified as out of scope. Try a clearer label photo.`,
         },
         { status: 422 }
       );

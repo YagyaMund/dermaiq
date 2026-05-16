@@ -30,6 +30,19 @@ function inferProductType(tags: string[]): string {
   const blob = tags.join(' ').toLowerCase();
   let v = 'moisturizer';
   if (blob.includes('sun')) v = 'sunscreen';
+  else if (blob.includes('shampoo')) v = 'shampoo';
+  else if (blob.includes('conditioner')) v = 'conditioner';
+  else if (
+    blob.includes('hair-oil') ||
+    blob.includes('hair oil') ||
+    blob.includes('essential-oil') ||
+    blob.includes('essential oil')
+  )
+    v = 'hair_oil';
+  else if (blob.includes('hair') && (blob.includes('serum') || blob.includes('treatment')))
+    v = 'hair_serum';
+  else if (blob.includes('hair') && blob.includes('mask')) v = 'hair_mask';
+  else if (blob.includes('scalp')) v = 'scalp_treatment';
   else if (blob.includes('cleanser') || blob.includes('cleansing')) v = 'cleanser';
   else if (blob.includes('lip')) v = 'lip_treatment';
   else if (blob.includes('mask')) v = 'mask';
@@ -38,6 +51,8 @@ function inferProductType(tags: string[]): string {
   else if (blob.includes('toner')) v = 'toner';
   else if (blob.includes('eye')) v = 'eye_care';
   else if (blob.includes('hand')) v = 'hand_care';
+  else if (blob.includes('deodor') || blob.includes('antiperspir') || blob.includes('underarm'))
+    v = 'deodorant';
   else if (blob.includes('body')) v = 'body_moisturizer';
   return ALLOWED_TYPES.has(v) ? v : 'moisturizer';
 }

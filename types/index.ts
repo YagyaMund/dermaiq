@@ -44,6 +44,6 @@ export interface VisionExtractionResult {
   product_type: string;
   ingredients: string[];
   confidence: string;
-  /** True only for in-scope skincare (see analyze API). */
+  /** True when in scope for DermaIQ (skin, scalp, hair personal care; see analyze API). */
   is_skincare: boolean;
 }

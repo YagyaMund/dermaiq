@@ -191,7 +191,7 @@ export default function Home() {
                 <input ref={cameraInputRef} id="camera-capture" type="file" accept="image/*" capture="environment" onChange={handleImageSelect} className="hidden" />
               </div>
               <p className="text-xs text-center mt-3 px-4" style={{ color: 'var(--text-secondary)' }}>
-                JPEG or PNG &bull; Max 5MB &bull; Cosmetic products only
+                JPEG or PNG &bull; Max 5MB &bull; Skin, hair & scalp care products
               </p>
             </div>
           )}

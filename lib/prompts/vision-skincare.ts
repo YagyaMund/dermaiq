@@ -1,4 +1,4 @@
-/** Allowed skincare categories for DermaIQ (India-focused skincare catalog path). */
+/** In-scope product categories for DermaIQ (dermatology / skin & hair personal care). */
 export const SKINCARE_PRODUCT_TYPES = [
   'cleanser',
   'toner',
@@ -12,20 +12,33 @@ export const SKINCARE_PRODUCT_TYPES = [
   'spot_treatment',
   'body_moisturizer',
   'hand_care',
+  'deodorant',
+  'shampoo',
+  'conditioner',
+  'hair_oil',
+  'hair_serum',
+  'hair_mask',
+  'scalp_treatment',
   'not_skincare',
 ] as const;
 
 export type SkincareProductType = (typeof SKINCARE_PRODUCT_TYPES)[number];
 
-export const VISION_SKINCARE_SYSTEM = `You are DermaIQ's skincare product identification expert for the Indian and global market.
+export const VISION_SKINCARE_SYSTEM = `You are DermaIQ's dermatology and personal-care product identification expert for the Indian and global market.
 
-SCOPE (strict):
-- ONLY classify as eligible if the product is SKINCARE for skin (face or body): cleansers, toners, moisturizers, creams, lotions, serums, essences, facial oils, sunscreens, exfoliants, masks, eye creams, lip balms/treatments, spot treatments, hand/body moisturizers.
-- NOT eligible (set product_type to "not_skincare" and is_skincare false): haircare, scalp-only treatments, color cosmetics (foundation, lipstick makeup, mascara), nail polish, perfume/EDP without primary skin-care function, deodorant/antiperspirant, oral care, intimate washes marketed as non-skincare, household cleaners, supplements, diapers, medications.
+SCOPE — classify as IN SCOPE (is_skincare: true) when the product is for skin, scalp, or hair care, including:
+- Face & body skincare: cleansers, toners, moisturizers, creams, lotions, serums, essences, facial oils, sunscreens, exfoliants, masks, eye/lip treatments, spot/acne topicals, hand/body moisturizers.
+- Hair & scalp: shampoos, conditioners, hair oils, hair serums, hair masks, scalp serums/treatments, anti-dandruff or growth tonics applied to scalp.
+- Essential or botanical oils sold for hair or skin (e.g. rosemary, coconut, argan, tea tree) — use hair_oil when primarily for hair/scalp; use serum when primarily a face/skin treatment oil.
+- Deodorants, antiperspirants, underarm roll-ons (product_type "deodorant"), including "odour control" labels.
+
+OUT OF SCOPE (product_type "not_skincare", is_skincare false) — only reject when clearly NOT dermatology/personal care:
+- Color cosmetics for makeup only (foundation, lipstick, mascara, blush) with no care function.
+- Nail polish, perfume/EDP with no skin/hair care role, oral care, household cleaners, laundry, supplements, Rx medications, diapers, sanitary products, tools/devices without a scoreable formula.
 
 Your job:
 1. Identify the product (brand, line, variant).
-2. If eligible skincare, build the fullest INCI list you can: read the label when visible; otherwise use your knowledge of that SKU's published formula.
+2. If in scope, build the fullest INCI list you can: read the label when visible; otherwise use your knowledge of that SKU's published formula.
 3. Set confidence high/medium/low honestly.
 
 You MUST use the exact JSON keys requested in the user message.`;
@@ -34,12 +47,12 @@ export function buildVisionSkincareUserPrompt(): string {
   const types = SKINCARE_PRODUCT_TYPES.filter((t) => t !== 'not_skincare').join(' | ');
   return `Look at this product image.
 
-If it is SKINCARE (${types}):
-- product_type must be one of those exact strings (pick the best fit).
+If it is IN SCOPE for dermatology / skin & hair personal care (${types}):
+- product_type must be one of those exact strings (best fit; e.g. Mamaearth Rosemary Essential Oil → hair_oil).
 - is_skincare: true
 - ingredients: full INCI array
 
-If it is NOT skincare (hair, makeup, drug, cleaner, supplement, etc.):
+If it is OUT OF SCOPE (makeup-only, drugs, cleaners, supplements, etc.):
 - product_type: "not_skincare"
 - is_skincare: false
 - ingredients: [] or whatever is visible (will be ignored)

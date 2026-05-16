@@ -60,8 +60,8 @@ Assume cumulative real-world exposure may matter for ubiquitous ingredients; ref
 - Non-nano: higher concern when ingestion/inhalation plausible (e.g. oral care, sprays, loose powders); for typical leave-on skin creams where inhalation/ingestion is not plausible, prefer YELLOW-level concern unless stronger evidence cited.
 - Align verdict and ingredient narrative with nano vs non-nano and product form (spray vs cream vs lip).
 
-7) UNRATED CATEGORIES (do not score these in DermaIQ skincare flow — reject earlier in pipeline)
-Household cleaning concentrates, nutritional supplements, diapers, sanitary pads/tampons, medications are out of scope.
+7) UNRATED CATEGORIES (reject earlier in pipeline — not dermatology personal care)
+Household cleaning concentrates, nutritional supplements, diapers, sanitary pads/tampons, prescription medications, makeup-only color cosmetics without care function. Skin, scalp, and hair personal care (including shampoos, hair oils, scalp treatments) are IN scope.
 
 8) RISK RECAP / INGREDIENT UPDATES
 Scientific consensus and regulatory context evolve; when classifying ingredients, prefer recent SCCS/EFSA/ECHA positions. Known re-classifications (e.g. UV filters, PFAS-related polymers, certain fragrances) should use current moderate/high caution where literature supports it.
