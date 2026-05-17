@@ -31,8 +31,7 @@ export async function runSkincareMethodologyDigestStep(
         content: `You are a methodology clerk for DermaIQ. You do NOT score products.
 
 You must read the entire REFERENCE block in the user message. Then produce a concise alignment_summary (plain text) that states, in your own words:
-- Which score band rules apply (red 0–24, orange 25–49, only green/yellow 50–100) and how penalties interact.
-- green/yellow go in positive_ingredients; orange/red in negative_ingredients; empty negatives ⇒ score ≥ 50.
+- Which score band rules apply (red <25, orange <50, green 50–100) and how penalties interact.
 - That organic labels are ignored for scoring; quantities are not inferred.
 - Precautionary principle and tiered evidence (SCCS/ECHA/IARC, etc.).
 - Any titanium dioxide / [nano] handling implied by the INCI list and product type.

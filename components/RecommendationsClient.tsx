@@ -56,7 +56,7 @@ export default function RecommendationsClient({ recommendations, userName }: Pro
               No recommendations yet
             </h2>
             <p className="text-sm mb-2 px-4" style={{ color: 'var(--text-secondary)' }}>
-              When you scan products that score below Fair, we&apos;ll suggest healthier alternatives here.
+              When a scan includes a healthier swap suggestion, it will appear here.
             </p>
             <p className="text-xs mb-6 px-4" style={{ color: 'var(--text-secondary)' }}>
               Start by analyzing a product to see if there are better options!

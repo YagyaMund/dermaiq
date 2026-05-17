@@ -4,7 +4,6 @@ import { getOpenAI, TEXT_MODEL } from '@/lib/openai';
 import { buildSkincareScoringSystemPrompt } from '@/lib/prompts/scoring-skincare';
 import { runSkincareMethodologyDigestStep } from '@/lib/prompts/methodology-step';
 import { ScoringResultSchema } from '@/lib/analysis/scoring-schema';
-import { enforceScoringConsistency } from '@/lib/analysis/enforce-scoring';
 
 /**
  * Runs methodology digest + scoring for a skincare vision payload (same as /api/analyze).
@@ -44,12 +43,11 @@ Total Ingredient Count: ${ingredientCount}
 Full Ingredient List (INCI): ${visionData.ingredients.join(', ')}
 
 You MUST:
-1. Classify each ingredient as green/yellow/orange/red based on health and environment risks
-2. Put green/yellow only in positive_ingredients; orange/red only in negative_ingredients
-3. Set score from highest risk: only green/yellow → 50–100 (never below 50); orange → 25–49; red → 0–24
-4. Apply penalties inside that band only (few yellow flags → usually 65–90, not 40s)
-5. Write a verdict that matches the score band
-6. If and only if score is 25–49, suggest a healthier alternative; if score ≥ 50, healthier_alternative must be null
+1. Classify each ingredient as green/yellow/orange/red using the Yuka methodology in PART A
+2. Set the score band from the highest-risk ingredient, then apply penalties within that band
+3. Group green/yellow ingredients under positive_ingredients; orange/red under negative_ingredients
+4. Write an honest 2–3 sentence verdict for regular consumers
+5. If final score < 50, suggest a healthier alternative with estimated_score in the correct band; if score ≥ 50, set healthier_alternative to null
 
 Use SIMPLE everyday names (e.g. "Vitamin E" not "Tocopheryl Acetate", "Shea Butter" not "Butyrospermum Parkii").
 For negative ingredients, include the technical name in brackets (e.g. "Sulfates [SLS/SLES]").
@@ -97,8 +95,7 @@ Return STRICTLY in this JSON format:
   }
 
   const parsed = JSON.parse(scoringContent);
-  const validated = ScoringResultSchema.parse(parsed);
-  return enforceScoringConsistency(validated);
+  return ScoringResultSchema.parse(parsed);
 }
 
 /** For scripts: lazy OpenAI client. */

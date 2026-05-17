@@ -26,16 +26,8 @@ INGREDIENT GROUPING (only non-empty categories):
 
 Do NOT use a "Synthetic Chemicals" category.
 
-SCORING CHECKLIST (complete before returning JSON):
-1. Classify every INCI ingredient as green, yellow, orange, or red.
-2. green/yellow → positive_ingredients only. orange/red → negative_ingredients only.
-3. Set score band from highest risk: red→0–24, orange (no red)→25–49, only green/yellow→50–100.
-4. Apply penalties inside that band only. If only green/yellow, score must be ≥ 50.
-5. If negative_ingredients is empty → score ≥ 50 and healthier_alternative = null.
-6. Verdict must match the band (do not call a 50+ product "poor").
-
 HEALTHIER ALTERNATIVE:
-Only if final score is 25–49 after the rules above. Suggest a real alternative with estimated_score in the correct band.
+If final score < 50, suggest a real, widely available cleaner alternative in the same product category (skin or hair) with estimated_score in the correct band. If score ≥ 50, set healthier_alternative to null.
 
 Use SIMPLE names for consumers (e.g. "Vitamin E" with INCI in brackets where helpful).
 `.trim();

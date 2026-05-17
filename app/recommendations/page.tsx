@@ -1,4 +1,4 @@
-import type { Analysis } from '@prisma/client';
+import { Prisma, type Analysis } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -20,13 +20,10 @@ export default async function RecommendationsPage() {
     redirect('/login');
   }
 
-  // Fetch analyses with score below Fair (<50) that have healthier alternatives
   const analyses = await prisma.analysis.findMany({
     where: {
       userId: session.user.id,
-      qualityScore: {
-        lt: 50,
-      },
+      healthierAlternative: { not: Prisma.DbNull },
     },
     orderBy: {
       createdAt: 'desc',
@@ -37,6 +34,7 @@ export default async function RecommendationsPage() {
   const recommendations = (analyses as Analysis[])
     .map((analysis) => {
       const alt = analysis.healthierAlternative as HealthierAlt | null;
+      if (!alt?.product_name) return null;
       return {
         id: analysis.id,
         productName: analysis.productName,
@@ -52,7 +50,8 @@ export default async function RecommendationsPage() {
             }
           : null,
       };
-    });
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   return (
     <RecommendationsClient

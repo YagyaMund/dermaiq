@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import type { AnalysisResult } from '@/types';
 import { ScoringResultSchema } from '@/lib/analysis/scoring-schema';
 import { makeCatalogLookupKey } from './lookup-key';
-import { enforceScoringConsistency } from '@/lib/analysis/enforce-scoring';
 import { findCachedSkincareAnalysis } from './catalog-service';
 
 const STRIP_WORDS =
@@ -23,10 +22,7 @@ export function catalogLookupKeyVariants(productName: string): string[] {
 function parseAnalysisJson(json: unknown): AnalysisResult | null {
   const parsed = ScoringResultSchema.safeParse(json);
   if (!parsed.success) return null;
-  return enforceScoringConsistency({
-    ...parsed.data,
-    from_catalog_cache: true,
-  });
+  return { ...parsed.data, from_catalog_cache: true };
 }
 
 export async function findCachedByImageHash(imageHash: string): Promise<AnalysisResult | null> {

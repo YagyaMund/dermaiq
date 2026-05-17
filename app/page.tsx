@@ -166,19 +166,20 @@ export default function Home() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
-        {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2" style={{ color: 'var(--primary)' }}>
-            DermaIQ
-          </h1>
-          <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Cosmetic Safety Analysis
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Skincare &bull; Haircare &bull; Body Care &bull; Sunscreen
-          </p>
-          <QuotaBanner quota={quota} isLoggedIn={Boolean(session)} />
-        </div>
+        {!result && (
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2" style={{ color: 'var(--primary)' }}>
+              DermaIQ
+            </h1>
+            <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Cosmetic Safety Analysis
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Skincare &bull; Haircare &bull; Body Care &bull; Sunscreen
+            </p>
+          </div>
+        )}
+        <QuotaBanner quota={quota} isLoggedIn={Boolean(session)} />
 
         {/* Main Card */}
         <div className="bg-white rounded-2xl border shadow-sm p-4 sm:p-6 mb-4 sm:mb-6" style={{ borderColor: 'var(--border)' }}>
