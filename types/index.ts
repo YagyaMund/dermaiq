@@ -37,6 +37,14 @@ export interface AnalysisResult {
 export interface AnalysisError {
   error: string;
   details?: string;
+  requiresLogin?: boolean;
+}
+
+export interface AnalyzeQuota {
+  authenticated: boolean;
+  remaining: number | null;
+  limit: number | null;
+  requiresLogin: boolean;
 }
 
 export interface VisionExtractionResult {

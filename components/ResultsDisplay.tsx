@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { AnalysisResult, IngredientCategory } from '@/types';
+import AiDisclaimer from '@/components/AiDisclaimer';
 
 interface ResultsDisplayProps {
   result: AnalysisResult;
@@ -131,6 +132,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
 
   return (
     <div className="space-y-4 animate-fadeIn">
+      <AiDisclaimer className="px-1" />
 
       {/* ── 1. Score Card ───────────────────────────────────────────────────── */}
       <Card className="p-5 sm:p-6">

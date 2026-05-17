@@ -106,6 +106,20 @@ model Analysis {
   @@map("analyses")
 }
 
+// Analyze API usage (rate limits & abuse monitoring across serverless instances)
+model ApiUsageLog {
+  id        String   @id @default(cuid())
+  ipHash    String
+  visitorId String?
+  userId    String?
+  route     String   @default("analyze")
+  createdAt DateTime @default(now())
+
+  @@index([ipHash, createdAt])
+  @@index([createdAt])
+  @@map("api_usage_logs")
+}
+
 // Email verification tokens
 model VerificationToken {
   identifier String

@@ -12,6 +12,11 @@ import {
 import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
 import { makeCatalogLookupKey } from '@/lib/catalog/lookup-key';
 import { findCachedSkincareAnalysis, upsertSkincareCatalogEntry } from '@/lib/catalog/catalog-service';
+import {
+  ANALYZE_TOKEN_HEADER,
+  enforceAnalyzeRequest,
+  incrementVisitorScanCount,
+} from '@/lib/security/analyze-guard';
 
 const SkincareProductTypeZ = z.enum(SKINCARE_PRODUCT_TYPES);
 
@@ -28,6 +33,23 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    const guard = await enforceAnalyzeRequest(
+      request,
+      Boolean(session?.user?.id),
+      session?.user?.id
+    );
+    if (!guard.ok) {
+      return NextResponse.json(
+        {
+          error: guard.error,
+          details: guard.details,
+          requiresLogin: guard.requiresLogin ?? false,
+        },
+        { status: guard.status }
+      );
+    }
+
     const formData = await request.formData();
     const image = formData.get('image') as File;
 
@@ -146,8 +168,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const session = await auth();
-
     if (session?.user?.id) {
       try {
         await prisma.analysis.create({
@@ -170,6 +190,10 @@ export async function POST(request: NextRequest) {
       } catch (dbError) {
         console.error('Failed to save analysis to database:', dbError);
       }
+    }
+
+    if (guard.incrementOnSuccess) {
+      await incrementVisitorScanCount();
     }
 
     const headers = new Headers();

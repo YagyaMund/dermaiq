@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ResultsDisplay from '@/components/ResultsDisplay';
-import type { AnalysisResult, AnalysisError } from '@/types';
+import AiDisclaimer from '@/components/AiDisclaimer';
+import type { AnalysisResult, AnalysisError, AnalyzeQuota } from '@/types';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -14,8 +15,24 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loginRequired, setLoginRequired] = useState(false);
+  const [quota, setQuota] = useState<AnalyzeQuota | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const refreshQuota = useCallback(async () => {
+    try {
+      const res = await fetch('/api/analyze/quota', { cache: 'no-store' });
+      if (res.ok) setQuota((await res.json()) as AnalyzeQuota);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    void refreshQuota();
+  }, [status, session?.user?.id, refreshQuota]);
 
   const processFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -43,17 +60,41 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     if (!selectedFile) return;
+    if (quota?.requiresLogin && !session) {
+      setLoginRequired(true);
+      setError('You have used all free scans in this browser. Sign in to continue.');
+      return;
+    }
 
     setIsAnalyzing(true);
     setError(null);
+    setLoginRequired(false);
     setResult(null);
 
     try {
+      const tokenRes = await fetch('/api/analyze/token', { cache: 'no-store' });
+      if (!tokenRes.ok) {
+        setError('Could not start analysis. Please refresh the page.');
+        return;
+      }
+      const tokenData = (await tokenRes.json()) as {
+        token: string;
+        tokenHeader: string;
+        requiresLogin?: boolean;
+      };
+      if (tokenData.requiresLogin && !session) {
+        setLoginRequired(true);
+        setError('You have used all free scans in this browser. Sign in to continue.');
+        await refreshQuota();
+        return;
+      }
+
       const formData = new FormData();
       formData.append('image', selectedFile);
 
       const response = await fetch('/api/analyze', {
         method: 'POST',
+        headers: { [tokenData.tokenHeader]: tokenData.token },
         body: formData,
       });
 
@@ -61,11 +102,14 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = data as AnalysisError;
+        setLoginRequired(Boolean(errorData.requiresLogin));
         setError(errorData.details || errorData.error);
+        await refreshQuota();
         return;
       }
 
       setResult(data as AnalysisResult);
+      await refreshQuota();
     } catch (err) {
       setError('Failed to analyze image. Please try again.');
       console.error('Analysis error:', err);
@@ -132,6 +176,11 @@ export default function Home() {
           <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
             Skincare &bull; Haircare &bull; Body Care &bull; Sunscreen
           </p>
+          {quota && !quota.authenticated && quota.remaining !== null && (
+            <p className="text-xs mt-2 font-medium" style={{ color: 'var(--primary)' }}>
+              {quota.remaining} of {quota.limit} free scans left in this browser
+            </p>
+          )}
         </div>
 
         {/* Main Card */}
@@ -198,7 +247,16 @@ export default function Home() {
 
           {error && (
             <div className="mb-4 p-3 rounded-xl text-xs sm:text-sm leading-relaxed" style={{ backgroundColor: '#FEF2F2', color: '#B85C50', border: '1px solid #FECACA' }}>
-              {error}
+              <p>{error}</p>
+              {loginRequired && !session && (
+                <Link
+                  href="/login"
+                  className="inline-block mt-2 font-semibold underline"
+                  style={{ color: 'var(--primary)' }}
+                >
+                  Sign in to continue analyzing
+                </Link>
+              )}
             </div>
           )}
 
@@ -206,7 +264,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={handleAnalyze}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || (quota?.requiresLogin && !session)}
                 className="flex-1 py-3 sm:py-3.5 px-4 rounded-xl font-semibold text-sm sm:text-base text-white transition-all disabled:opacity-50 active:scale-95 shadow-sm"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
@@ -261,8 +319,11 @@ export default function Home() {
           </div>
         )}
 
-        <div className="text-center mt-6 sm:mt-8 text-xs px-4" style={{ color: 'var(--text-secondary)' }}>
-          <p>Risk-based ingredient scoring &bull; Cosmetics only</p>
+        <div className="mt-6 sm:mt-8 px-4 space-y-2">
+          <AiDisclaimer />
+          <p className="text-center text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Risk-based ingredient scoring
+          </p>
         </div>
       </div>
     </div>
