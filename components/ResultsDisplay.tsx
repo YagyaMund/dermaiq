@@ -3,6 +3,85 @@
 import { useState } from 'react';
 import type { AnalysisResult, IngredientCategory } from '@/types';
 import AiDisclaimer from '@/components/AiDisclaimer';
+import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
+
+function AltProductImage({
+  productName,
+  brand,
+  imageUrl,
+}: {
+  productName: string;
+  brand: string;
+  imageUrl?: string | null;
+}) {
+  const [failed, setFailed] = useState(false);
+  const safeUrl = sanitizeProductImageUrl(imageUrl);
+  const showImage = safeUrl && !failed;
+
+  return (
+    <div
+      className="flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden"
+      style={{
+        width: 88,
+        height: 88,
+        backgroundColor: '#F5F1EB',
+        minWidth: 88,
+      }}
+    >
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={safeUrl}
+          alt={productName}
+          className="w-full h-full object-contain"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span
+          className="text-2xl font-bold opacity-40 select-none"
+          style={{ color: '#2D6A4F' }}
+          aria-hidden
+        >
+          {(brand || productName).charAt(0).toUpperCase()}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ScoreRing({ score }: { score: number }) {
+  const color = getScoreColor(score);
+  const bg = getScoreBg(score);
+  const compact = score >= 100;
+
+  return (
+    <div className="flex-shrink-0 flex flex-col items-center gap-1">
+      <div
+        className="rounded-full flex flex-col items-center justify-center border-[3px]"
+        style={{
+          width: compact ? 88 : 78,
+          height: compact ? 88 : 78,
+          borderColor: color,
+          backgroundColor: bg,
+        }}
+      >
+        <span
+          className={`font-extrabold tabular-nums leading-none ${compact ? 'text-2xl' : 'text-3xl'}`}
+          style={{ color }}
+        >
+          {score}
+        </span>
+      </div>
+      <span className="text-[10px] font-medium opacity-70" style={{ color }}>
+        / 100
+      </span>
+      <span className="text-xs font-semibold tracking-wide" style={{ color }}>
+        {getScoreLabel(score)}
+      </span>
+    </div>
+  );
+}
 
 interface ResultsDisplayProps {
   result: AnalysisResult;
@@ -151,44 +230,8 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
             >
               {result.product_type?.replace(/_/g, ' ') || 'Cosmetic Product'}
             </p>
-            {result.from_catalog_cache ? (
-              <p className="text-[11px] sm:text-xs mt-1.5 text-emerald-700/90 dark:text-emerald-400/90">
-                Served from product catalog (no live scoring call)
-              </p>
-            ) : null}
           </div>
-          <div className="flex-shrink-0 flex flex-col items-center gap-1">
-            <div
-              className="rounded-full flex items-center justify-center border-[3px]"
-              style={{
-                width: 78,
-                height: 78,
-                borderColor: getScoreColor(score),
-                backgroundColor: getScoreBg(score),
-              }}
-            >
-              <span className="inline-flex items-baseline">
-                <span
-                  className="text-3xl font-extrabold tabular-nums leading-none"
-                  style={{ color: getScoreColor(score) }}
-                >
-                  {score}
-                </span>
-                <span
-                  className="text-xs font-semibold ml-0.5 opacity-70"
-                  style={{ color: getScoreColor(score) }}
-                >
-                  /100
-                </span>
-              </span>
-            </div>
-            <span
-              className="text-xs font-semibold tracking-wide"
-              style={{ color: getScoreColor(score) }}
-            >
-              {getScoreLabel(score)}
-            </span>
-          </div>
+          <ScoreRing score={score} />
         </div>
 
         {/* Grading bar */}
@@ -249,7 +292,6 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
       {result.healthier_alternative && (() => {
         const alt = result.healthier_alternative!;
         const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`${alt.product_name} ${alt.brand}`)}`;
-        const hasImage = !!alt.image_url && (alt.image_url.startsWith('http://') || alt.image_url.startsWith('https://'));
         return (
           <Card style={{ borderColor: '#4A7C59', borderWidth: 2 }}>
             {/* Header strip */}
@@ -274,15 +316,11 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
                   minWidth: 88,
                 }}
               >
-                {hasImage ? (
-                  <img
-                    src={alt.image_url!}
-                    alt={alt.product_name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <span className="text-4xl opacity-30" aria-hidden>🧴</span>
-                )}
+                <AltProductImage
+                  productName={alt.product_name}
+                  brand={alt.brand}
+                  imageUrl={alt.image_url}
+                />
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">

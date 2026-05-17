@@ -35,6 +35,7 @@ export async function upsertSkincareCatalogEntry(params: {
   analysis: AnalysisResult;
   source: 'user_scan' | 'open_beauty_facts' | 'backfill';
   externalId?: string | null;
+  imageHash?: string;
 }): Promise<void> {
   const { lookupKey, vision, analysis, source, externalId } = params;
   const stored = analysisForStorage(analysis);
@@ -48,19 +49,51 @@ export async function upsertSkincareCatalogEntry(params: {
   };
 
   try {
+    const existing = await prisma.skincareProductCatalog.findUnique({
+      where: { lookupKey },
+      select: { analysisJson: true, score: true },
+    });
+
+    const hasStoredScore = existing?.analysisJson != null && existing?.score != null;
+
     await prisma.skincareProductCatalog.upsert({
       where: { lookupKey },
       create: {
         lookupKey,
         ...payload,
         ...(externalId != null && externalId !== '' ? { externalId } : {}),
+        ...(params.imageHash ? { imageHash: params.imageHash } : {}),
       },
       update: {
-        ...payload,
+        displayName: payload.displayName,
+        productType: payload.productType,
+        ingredients: payload.ingredients,
+        source: payload.source,
         ...(externalId != null && externalId !== '' ? { externalId } : {}),
+        ...(params.imageHash ? { imageHash: params.imageHash } : {}),
+        ...(hasStoredScore
+          ? {}
+          : {
+              analysisJson: payload.analysisJson,
+              score: payload.score,
+            }),
       },
     });
   } catch (e) {
     console.warn('Catalog upsert failed (response still returned):', e);
+  }
+}
+
+export async function linkImageHashToCatalog(
+  lookupKey: string,
+  imageHash: string
+): Promise<void> {
+  try {
+    await prisma.skincareProductCatalog.updateMany({
+      where: { lookupKey, imageHash: null },
+      data: { imageHash },
+    });
+  } catch (e) {
+    console.warn('linkImageHashToCatalog failed:', e);
   }
 }

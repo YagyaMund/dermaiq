@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "DermaIQ - European Standard Cosmetic Analysis",
+  title: "DermaIQ - Cosmetic Safety Analysis",
   description: "Analyze skin, hair, and scalp care products using strict European (EU) safety standards. Simple, clear ingredient analysis.",
 };
 

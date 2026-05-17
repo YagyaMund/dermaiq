@@ -11,7 +11,16 @@ import {
 } from '@/lib/prompts/vision-skincare';
 import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
 import { makeCatalogLookupKey } from '@/lib/catalog/lookup-key';
-import { findCachedSkincareAnalysis, upsertSkincareCatalogEntry } from '@/lib/catalog/catalog-service';
+import {
+  linkImageHashToCatalog,
+  upsertSkincareCatalogEntry,
+} from '@/lib/catalog/catalog-service';
+import { hashImageBuffer } from '@/lib/catalog/image-hash';
+import {
+  findCachedByImageHash,
+  resolveCachedAnalysis,
+} from '@/lib/catalog/resolve-cache';
+import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
 import {
   ANALYZE_TOKEN_HEADER,
   enforceAnalyzeRequest,
@@ -30,6 +39,15 @@ const VisionResultSchema = z.object({
 
 /** Vision + optional cache hit, or methodology digest + scoring (up to three model calls). */
 export const maxDuration = 60;
+
+function normalizeAnalysisResult(result: AnalysisResult): AnalysisResult {
+  if (!result.healthier_alternative?.image_url) return result;
+  const safe = sanitizeProductImageUrl(result.healthier_alternative.image_url);
+  return {
+    ...result,
+    healthier_alternative: { ...result.healthier_alternative, image_url: safe },
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,6 +95,47 @@ export async function POST(request: NextRequest) {
 
     const bytes = await image.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const imageHash = hashImageBuffer(buffer);
+
+    const imageCached = await findCachedByImageHash(imageHash);
+    if (imageCached) {
+      console.log('Catalog cache HIT (image hash):', imageHash.slice(0, 12));
+      const analysisResult = normalizeAnalysisResult({
+        ...imageCached,
+        from_catalog_cache: true,
+      });
+      if (session?.user?.id) {
+        try {
+          await prisma.analysis.create({
+            data: {
+              userId: session.user.id,
+              productName: analysisResult.product_name,
+              imageUrl: null,
+              qualityScore: analysisResult.score,
+              safetyScore: analysisResult.score,
+              organicType: 'N/A',
+              positiveIngredients: JSON.parse(
+                JSON.stringify(analysisResult.positive_ingredients)
+              ),
+              negativeIngredients: JSON.parse(
+                JSON.stringify(analysisResult.negative_ingredients)
+              ),
+              verdict: analysisResult.verdict,
+              healthierAlternative: analysisResult.healthier_alternative
+                ? JSON.parse(JSON.stringify(analysisResult.healthier_alternative))
+                : undefined,
+            },
+          });
+        } catch (dbError) {
+          console.error('Failed to save analysis to database:', dbError);
+        }
+      }
+      if (guard.incrementOnSuccess) await incrementVisitorScanCount();
+      const headers = new Headers();
+      headers.set('X-DermaIQ-Catalog-Cache', 'hit');
+      return NextResponse.json(analysisResult, { status: 200, headers });
+    }
+
     const base64Image = buffer.toString('base64');
     const imageUrl = `data:${image.type};base64,${base64Image}`;
 
@@ -148,23 +207,40 @@ export async function POST(request: NextRequest) {
     }
 
     const lookupKey = makeCatalogLookupKey(visionData.product_name);
-    const cached = await findCachedSkincareAnalysis(lookupKey);
+    const cached = await resolveCachedAnalysis(visionData.product_name);
 
     let analysisResult: AnalysisResult;
 
     if (cached) {
-      console.log('Catalog cache HIT for lookupKey:', lookupKey);
-      analysisResult = { ...cached, from_catalog_cache: true };
+      console.log('Catalog cache HIT for product:', lookupKey);
+      analysisResult = normalizeAnalysisResult({
+        ...cached,
+        product_name: cached.product_name || visionData.product_name,
+        from_catalog_cache: true,
+      });
+      await linkImageHashToCatalog(lookupKey, imageHash);
     } else {
       console.log('Step 1b–2: Methodology digest + scoring (cache miss)...');
       analysisResult = await scoreSkincareFromVision(openai, visionData);
       analysisResult = { ...analysisResult, from_catalog_cache: false };
+
+      if (analysisResult.healthier_alternative?.image_url) {
+        const safe = sanitizeProductImageUrl(analysisResult.healthier_alternative.image_url);
+        analysisResult = {
+          ...analysisResult,
+          healthier_alternative: {
+            ...analysisResult.healthier_alternative,
+            image_url: safe,
+          },
+        };
+      }
 
       await upsertSkincareCatalogEntry({
         lookupKey,
         vision: visionData,
         analysis: analysisResult,
         source: 'user_scan',
+        imageHash,
       });
     }
 

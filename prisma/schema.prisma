@@ -73,6 +73,7 @@ model SkincareProductCatalog {
   score        Int?
   source       String   @default("user_scan") // user_scan | open_beauty_facts | backfill
   externalId   String?  @unique // e.g. Open Beauty Facts barcode
+  imageHash    String?  @unique // SHA-256 of product photo for instant cache hits
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

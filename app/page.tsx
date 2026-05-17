@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import AiDisclaimer from '@/components/AiDisclaimer';
+import QuotaBanner from '@/components/QuotaBanner';
 import type { AnalysisResult, AnalysisError, AnalyzeQuota } from '@/types';
 
 export default function Home() {
@@ -62,7 +63,7 @@ export default function Home() {
     if (!selectedFile) return;
     if (quota?.requiresLogin && !session) {
       setLoginRequired(true);
-      setError('You have used all free scans in this browser. Sign in to continue.');
+      setError('You have used all 3 free scans. Log in to scan more products.');
       return;
     }
 
@@ -84,7 +85,7 @@ export default function Home() {
       };
       if (tokenData.requiresLogin && !session) {
         setLoginRequired(true);
-        setError('You have used all free scans in this browser. Sign in to continue.');
+        setError('You have used all 3 free scans. Log in to scan more products.');
         await refreshQuota();
         return;
       }
@@ -171,16 +172,12 @@ export default function Home() {
             DermaIQ
           </h1>
           <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
-            European Standard Cosmetic Safety Analysis
+            Cosmetic Safety Analysis
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
             Skincare &bull; Haircare &bull; Body Care &bull; Sunscreen
           </p>
-          {quota && !quota.authenticated && quota.remaining !== null && (
-            <p className="text-xs mt-2 font-medium" style={{ color: 'var(--primary)' }}>
-              {quota.remaining} of {quota.limit} free scans left in this browser
-            </p>
-          )}
+          <QuotaBanner quota={quota} isLoggedIn={Boolean(session)} />
         </div>
 
         {/* Main Card */}

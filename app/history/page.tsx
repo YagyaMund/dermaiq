@@ -1,3 +1,4 @@
+import type { Analysis } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -22,7 +23,7 @@ export default async function HistoryPage() {
     take: 50,
   });
 
-  const historyData = analyses.map((analysis) => ({
+  const historyData = (analyses as Analysis[]).map((analysis) => ({
     id: analysis.id,
     productName: analysis.productName,
     score: analysis.qualityScore,

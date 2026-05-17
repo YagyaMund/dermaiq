@@ -1,3 +1,4 @@
+import type { Analysis } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -33,7 +34,7 @@ export default async function RecommendationsPage() {
     take: 20,
   });
 
-  const recommendations = analyses
+  const recommendations = (analyses as Analysis[])
     .map((analysis) => {
       const alt = analysis.healthierAlternative as HealthierAlt | null;
       return {
