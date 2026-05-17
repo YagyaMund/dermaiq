@@ -31,6 +31,7 @@ export async function runSkincareMethodologyDigestStep(
         content: `You are a methodology clerk for DermaIQ. You do NOT score products.
 
 You must read the entire REFERENCE block in the user message. Then produce a concise alignment_summary (plain text) that states, in your own words:
+- That all scores assume regular (normal, non-sensitive) adult skin unless the product is only for sensitive/baby skin.
 - Which score band rules apply (red <25, orange <50, green 50–100) and how penalties interact.
 - That organic labels are ignored for scoring; quantities are not inferred.
 - Precautionary principle and tiered evidence (SCCS/ECHA/IARC, etc.).

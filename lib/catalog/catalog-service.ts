@@ -33,7 +33,7 @@ export async function upsertSkincareCatalogEntry(params: {
   lookupKey: string;
   vision: VisionExtractionResult;
   analysis: AnalysisResult;
-  source: 'user_scan' | 'open_beauty_facts' | 'backfill' | 'alternative_suggestion';
+  source: 'user_scan' | 'name_search' | 'open_beauty_facts' | 'backfill' | 'alternative_suggestion';
   externalId?: string | null;
   imageHash?: string;
 }): Promise<void> {
@@ -55,7 +55,8 @@ export async function upsertSkincareCatalogEntry(params: {
     });
 
     const hasStoredScore = existing?.analysisJson != null && existing?.score != null;
-    const refreshScore = source === 'user_scan' || !hasStoredScore;
+    const refreshScore =
+      source === 'user_scan' || source === 'name_search' || !hasStoredScore;
 
     await prisma.skincareProductCatalog.upsert({
       where: { lookupKey },

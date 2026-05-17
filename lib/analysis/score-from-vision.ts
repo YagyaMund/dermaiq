@@ -4,6 +4,7 @@ import { getOpenAI, TEXT_MODEL } from '@/lib/openai';
 import { buildSkincareScoringSystemPrompt } from '@/lib/prompts/scoring-skincare';
 import { runSkincareMethodologyDigestStep } from '@/lib/prompts/methodology-step';
 import { ScoringResultSchema } from '@/lib/analysis/scoring-schema';
+import { REGULAR_SKIN_EVALUATION_CONTEXT } from '@/lib/prompts/regular-skin-context';
 
 /**
  * Runs methodology digest + scoring for a skincare vision payload (same as /api/analyze).
@@ -34,6 +35,8 @@ export async function scoreSkincareFromVision(
 ${methodologyDigest.alignment_summary}
 ${methodologyDigest.titanium_dioxide_notes ? `\nTitanium dioxide notes: ${methodologyDigest.titanium_dioxide_notes}\n` : ''}
 === END DIGEST ===
+
+${REGULAR_SKIN_EVALUATION_CONTEXT}
 
 Analyze this ${visionData.product_type} product using the risk-based scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
 

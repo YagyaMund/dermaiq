@@ -9,20 +9,13 @@ import {
   VISION_SKINCARE_SYSTEM,
   buildVisionSkincareUserPrompt,
 } from '@/lib/prompts/vision-skincare';
-import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
-import { resolveHealthierAlternativeScore } from '@/lib/analysis/resolve-healthier-alternative';
-import type OpenAI from 'openai';
-import { makeCatalogLookupKey } from '@/lib/catalog/lookup-key';
 import {
-  linkImageHashToCatalog,
-  upsertSkincareCatalogEntry,
-} from '@/lib/catalog/catalog-service';
+  applyCatalogScoredAlternative,
+  normalizeAnalysisResult,
+  runCatalogAnalysis,
+} from '@/lib/analysis/run-catalog-analysis';
 import { hashImageBuffer } from '@/lib/catalog/image-hash';
-import {
-  findCachedByImageHash,
-  resolveCachedAnalysis,
-} from '@/lib/catalog/resolve-cache';
-import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
+import { findCachedByImageHash } from '@/lib/catalog/resolve-cache';
 import {
   ANALYZE_TOKEN_HEADER,
   enforceAnalyzeRequest,
@@ -41,27 +34,6 @@ const VisionResultSchema = z.object({
 
 /** Vision + scoring; + alternative product scoring when suggested. */
 export const maxDuration = 120;
-
-function normalizeAnalysisResult(result: AnalysisResult): AnalysisResult {
-  if (!result.healthier_alternative?.image_url) return result;
-  const safe = sanitizeProductImageUrl(result.healthier_alternative.image_url);
-  return {
-    ...result,
-    healthier_alternative: { ...result.healthier_alternative, image_url: safe },
-  };
-}
-
-async function applyCatalogScoredAlternative(
-  openai: OpenAI,
-  result: AnalysisResult
-): Promise<AnalysisResult> {
-  if (!result.healthier_alternative) return result;
-  const healthier_alternative = await resolveHealthierAlternativeScore(
-    openai,
-    result.healthier_alternative
-  );
-  return normalizeAnalysisResult({ ...result, healthier_alternative });
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -222,34 +194,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const lookupKey = makeCatalogLookupKey(visionData.product_name);
-    const cached = await resolveCachedAnalysis(visionData.product_name);
-
-    let analysisResult: AnalysisResult;
-
-    if (cached) {
-      console.log('Catalog cache HIT for product:', lookupKey);
-      analysisResult = normalizeAnalysisResult({
-        ...cached,
-        product_name: cached.product_name || visionData.product_name,
-        from_catalog_cache: true,
-      });
-      await linkImageHashToCatalog(lookupKey, imageHash);
-    } else {
-      console.log('Step 1b–2: Methodology digest + scoring (cache miss)...');
-      analysisResult = await scoreSkincareFromVision(openai, visionData);
-      analysisResult = { ...analysisResult, from_catalog_cache: false };
-
-      await upsertSkincareCatalogEntry({
-        lookupKey,
-        vision: visionData,
-        analysis: analysisResult,
-        source: 'user_scan',
-        imageHash,
-      });
-    }
-
-    analysisResult = await applyCatalogScoredAlternative(openai, analysisResult);
+    console.log('Step 1b–2: Methodology digest + scoring...');
+    const analysisResult = await runCatalogAnalysis(openai, visionData, {
+      source: 'user_scan',
+      imageHash,
+    });
 
     if (session?.user?.id) {
       try {

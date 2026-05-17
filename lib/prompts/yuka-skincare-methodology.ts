@@ -14,8 +14,12 @@
  * - https://help.yuka.io/l/en/article/3kdehn4bnk-risk-level-changes-cosmetic-ingredients
  */
 
+import { REGULAR_SKIN_EVALUATION_CONTEXT } from './regular-skin-context';
+
 export const YUKA_SKINCARE_METHODOLOGY_REFERENCE = `
 REFERENCE: SKINCARE / COSMETIC SCORING (Yuka-aligned methodology for DermaIQ)
+
+0) ${REGULAR_SKIN_EVALUATION_CONTEXT}
 
 1) HOW PRODUCTS ARE EVALUATED
 - Analyze every ingredient in the INCI list.

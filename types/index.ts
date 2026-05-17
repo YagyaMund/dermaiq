@@ -38,6 +38,8 @@ export interface AnalysisError {
   error: string;
   details?: string;
   requiresLogin?: boolean;
+  code?: 'too_vague' | 'not_found' | 'out_of_scope';
+  examples?: string[];
 }
 
 export interface AnalyzeQuota {

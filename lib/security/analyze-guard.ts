@@ -28,22 +28,13 @@ export type AnalyzeGuardResult =
     }
   | { ok: false; status: number; error: string; details?: string; requiresLogin?: boolean };
 
-export async function enforceAnalyzeRequest(
+async function enforceAnalyzeRequestCore(
   request: NextRequest,
   isAuthenticated: boolean,
   userId?: string
 ): Promise<AnalyzeGuardResult> {
   if (request.method !== 'POST') {
     return { ok: false, status: 405, error: 'Method not allowed' };
-  }
-
-  if (!isMultipartImageUpload(request)) {
-    return {
-      ok: false,
-      status: 403,
-      error: 'Invalid request',
-      details: 'Analysis is only available via photo upload from the DermaIQ app.',
-    };
   }
 
   if (isBlockedUserAgent(request)) {
@@ -117,6 +108,39 @@ export async function enforceAnalyzeRequest(
     isAuthenticated,
     incrementOnSuccess: !isAuthenticated,
   };
+}
+
+export async function enforceAnalyzeRequest(
+  request: NextRequest,
+  isAuthenticated: boolean,
+  userId?: string
+): Promise<AnalyzeGuardResult> {
+  if (!isMultipartImageUpload(request)) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Invalid request',
+      details: 'Analysis is only available via photo upload from the DermaIQ app.',
+    };
+  }
+  return enforceAnalyzeRequestCore(request, isAuthenticated, userId);
+}
+
+export async function enforceAnalyzeSearchRequest(
+  request: NextRequest,
+  isAuthenticated: boolean,
+  userId?: string
+): Promise<AnalyzeGuardResult> {
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Invalid request',
+      details: 'Search must be sent as JSON from the DermaIQ app.',
+    };
+  }
+  return enforceAnalyzeRequestCore(request, isAuthenticated, userId);
 }
 
 export async function incrementVisitorScanCount(): Promise<void> {

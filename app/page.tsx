@@ -8,11 +8,17 @@ import ResultsDisplay from '@/components/ResultsDisplay';
 import AiDisclaimer from '@/components/AiDisclaimer';
 import QuotaBanner from '@/components/QuotaBanner';
 import type { AnalysisResult, AnalysisError, AnalyzeQuota } from '@/types';
+import { isObviouslyVagueSearchQuery } from '@/lib/analysis/resolve-product-search';
+
+type InputMode = 'scan' | 'search';
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const [mode, setMode] = useState<InputMode>('scan');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchExamples, setSearchExamples] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,36 +65,43 @@ export default function Home() {
     if (file) processFile(file);
   };
 
+  const fetchAnalyzeToken = async () => {
+    const tokenRes = await fetch('/api/analyze/token', { cache: 'no-store' });
+    if (!tokenRes.ok) {
+      setError('Could not start analysis. Please refresh the page.');
+      return null;
+    }
+    const tokenData = (await tokenRes.json()) as {
+      token: string;
+      tokenHeader: string;
+      requiresLogin?: boolean;
+    };
+    if (tokenData.requiresLogin && !session) {
+      setLoginRequired(true);
+      setError('You have used all 3 free scans. Log in to analyze more products.');
+      await refreshQuota();
+      return null;
+    }
+    return tokenData;
+  };
+
   const handleAnalyze = async () => {
     if (!selectedFile) return;
     if (quota?.requiresLogin && !session) {
       setLoginRequired(true);
-      setError('You have used all 3 free scans. Log in to scan more products.');
+      setError('You have used all 3 free scans. Log in to analyze more products.');
       return;
     }
 
     setIsAnalyzing(true);
     setError(null);
+    setSearchExamples([]);
     setLoginRequired(false);
     setResult(null);
 
     try {
-      const tokenRes = await fetch('/api/analyze/token', { cache: 'no-store' });
-      if (!tokenRes.ok) {
-        setError('Could not start analysis. Please refresh the page.');
-        return;
-      }
-      const tokenData = (await tokenRes.json()) as {
-        token: string;
-        tokenHeader: string;
-        requiresLogin?: boolean;
-      };
-      if (tokenData.requiresLogin && !session) {
-        setLoginRequired(true);
-        setError('You have used all 3 free scans. Log in to scan more products.');
-        await refreshQuota();
-        return;
-      }
+      const tokenData = await fetchAnalyzeToken();
+      if (!tokenData) return;
 
       const formData = new FormData();
       formData.append('image', selectedFile);
@@ -119,13 +132,87 @@ export default function Home() {
     }
   };
 
+  const handleSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setError('Enter a product name to search.');
+      return;
+    }
+    if (isObviouslyVagueSearchQuery(q)) {
+      setSearchExamples([
+        'Cetaphil Gentle Skin Cleanser',
+        'CeraVe Hydrating Facial Cleanser',
+        'Neutrogena Hydro Boost Water Gel',
+      ]);
+      setError(
+        'Search is too broad. Include brand and product name (e.g. "Cetaphil Gentle Skin Cleanser").'
+      );
+      return;
+    }
+    if (quota?.requiresLogin && !session) {
+      setLoginRequired(true);
+      setError('You have used all 3 free scans. Log in to analyze more products.');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError(null);
+    setSearchExamples([]);
+    setLoginRequired(false);
+    setResult(null);
+
+    try {
+      const tokenData = await fetchAnalyzeToken();
+      if (!tokenData) return;
+
+      const response = await fetch('/api/analyze/search', {
+        method: 'POST',
+        headers: {
+          [tokenData.tokenHeader]: tokenData.token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: q }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorData = data as AnalysisError;
+        setLoginRequired(Boolean(errorData.requiresLogin));
+        setError(errorData.details || errorData.error);
+        if (errorData.examples?.length) {
+          setSearchExamples(errorData.examples);
+        }
+        await refreshQuota();
+        return;
+      }
+
+      setResult(data as AnalysisResult);
+      await refreshQuota();
+    } catch (err) {
+      setError('Product search failed. Please try again.');
+      console.error('Search error:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleReset = () => {
     setSelectedImage(null);
     setSelectedFile(null);
+    setSearchQuery('');
+    setSearchExamples([]);
     setResult(null);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const switchMode = (next: InputMode) => {
+    setMode(next);
+    setError(null);
+    setSearchExamples([]);
+    setResult(null);
   };
 
   return (
@@ -181,9 +268,64 @@ export default function Home() {
         )}
         <QuotaBanner quota={quota} isLoggedIn={Boolean(session)} />
 
+        {!result && (
+          <div
+            className="flex rounded-xl p-1 mb-4"
+            style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
+            role="tablist"
+          >
+            <button
+              type="button"
+              onClick={() => switchMode('scan')}
+              className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+              style={{
+                backgroundColor: mode === 'scan' ? 'white' : 'transparent',
+                color: mode === 'scan' ? 'var(--primary)' : 'var(--text-secondary)',
+                boxShadow: mode === 'scan' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              Scan photo
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('search')}
+              className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+              style={{
+                backgroundColor: mode === 'search' ? 'white' : 'transparent',
+                color: mode === 'search' ? 'var(--primary)' : 'var(--text-secondary)',
+                boxShadow: mode === 'search' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              Search by name
+            </button>
+          </div>
+        )}
+
         {/* Main Card */}
         <div className="bg-white rounded-2xl border shadow-sm p-4 sm:p-6 mb-4 sm:mb-6" style={{ borderColor: 'var(--border)' }}>
-          {selectedImage ? (
+          {mode === 'search' && !result ? (
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="product-search" className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                Product name
+              </label>
+              <input
+                id="product-search"
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isAnalyzing) void handleSearch();
+                }}
+                placeholder="e.g. Cetaphil Gentle Skin Cleanser"
+                className="w-full px-4 py-3 rounded-xl text-sm border outline-none focus:ring-2"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                disabled={isAnalyzing}
+              />
+              <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+                Use brand + product line. Scores assume regular (non-sensitive) adult skin.
+              </p>
+            </div>
+          ) : selectedImage ? (
             <div className="mb-4 sm:mb-6">
               <div className="border-2 border-dashed rounded-lg p-4 text-center" style={{ borderColor: 'var(--border)' }}>
                 <div className="relative w-full mx-auto" style={{ maxWidth: '400px', aspectRatio: '4/3' }}>
@@ -201,7 +343,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          ) : (
+          ) : mode === 'scan' ? (
             <div className="mb-4 sm:mb-6">
               <div className="grid grid-cols-2 gap-3">
                 <label htmlFor="image-upload" className="cursor-pointer">
@@ -241,11 +383,18 @@ export default function Home() {
                 JPEG or PNG &bull; Max 5MB &bull; Skin, hair & scalp care products
               </p>
             </div>
-          )}
+          ) : null}
 
           {error && (
             <div className="mb-4 p-3 rounded-xl text-xs sm:text-sm leading-relaxed" style={{ backgroundColor: '#FEF2F2', color: '#B85C50', border: '1px solid #FECACA' }}>
               <p>{error}</p>
+              {searchExamples.length > 0 && (
+                <ul className="mt-2 list-disc pl-4 space-y-0.5">
+                  {searchExamples.map((ex) => (
+                    <li key={ex}>{ex}</li>
+                  ))}
+                </ul>
+              )}
               {loginRequired && !session && (
                 <Link
                   href="/login"
@@ -258,7 +407,38 @@ export default function Home() {
             </div>
           )}
 
-          {selectedImage && !result && (
+          {mode === 'search' && !result && (
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={() => void handleSearch()}
+                disabled={isAnalyzing || !searchQuery.trim() || (quota?.requiresLogin && !session)}
+                className="flex-1 py-3 sm:py-3.5 px-4 rounded-xl font-semibold text-sm sm:text-base text-white transition-all disabled:opacity-50 active:scale-95 shadow-sm"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                {isAnalyzing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    Searching...
+                  </span>
+                ) : (
+                  'Search Product'
+                )}
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={isAnalyzing}
+                className="px-6 py-3 sm:py-3.5 rounded-xl font-medium text-sm sm:text-base transition-all active:scale-95"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
+          {mode === 'scan' && selectedImage && !result && (
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={handleAnalyze}
