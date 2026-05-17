@@ -22,16 +22,25 @@ REFERENCE: SKINCARE / COSMETIC SCORING (Yuka-aligned methodology for DermaIQ)
 - Assign each ingredient a risk level from current science for health and environment:
   endocrine disruption, carcinogenic, allergenic, irritant, pollutant.
 - Four risk levels only: GREEN (risk-free), YELLOW (low risk), ORANGE (moderate), RED (high-risk).
-- Overall score is driven by the HIGHEST-RISK ingredient present:
-  • Any RED → final score must be in the RED band: 0–24 (strictly below 25/100).
-  • Highest is ORANGE (no red) → score in the ORANGE band: 0–49 (strictly below 50/100).
-  • Only GREEN and/or YELLOW → GREEN band: 50–100 inclusive.
+- Overall score is driven by the HIGHEST-RISK ingredient present (MANDATORY — no exceptions):
+  • Any RED ingredient → final score 0–24 only.
+  • Highest is ORANGE and no RED → final score 25–49 only.
+  • ONLY GREEN and/or YELLOW (no orange, no red anywhere) → final score 50–100 only. Never below 50.
+
+RIGID OUTPUT RULES (DermaIQ):
+- List GREEN and YELLOW ingredients under positive_ingredients only.
+- List ORANGE and RED ingredients under negative_ingredients only.
+- If negative_ingredients is empty, the score MUST be 50–100 and healthier_alternative MUST be null.
+- Do NOT label a product "Poor" or score below 50 when every ingredient is green or yellow.
+- YELLOW = low risk, not "bad"; do not treat yellow as orange.
 
 2) PENALTIES (apply within the band determined above)
-When only GREEN and/or YELLOW ingredients (green band 50–100):
-  • −10 points: ingredient with potential carcinogenic OR endocrine-disruptor concern at low/yellow level (as per penalty doc).
-  • −7 points: ingredient with several of: allergen, irritant, other health effect, pollutant (yellow/low).
-  • −2 points: ingredient with only ONE of: allergen, irritant, other health effect, pollutant (yellow/low).
+When only GREEN and/or YELLOW ingredients (green band 50–100 — start from 100 and subtract, floor 50):
+  • −10 points max per ingredient: potential carcinogenic OR endocrine-disruptor at yellow level.
+  • −7 points max per ingredient: several of allergen, irritant, other health effect, pollutant at yellow level.
+  • −2 points max per ingredient: only ONE of allergen, irritant, other health effect, pollutant at yellow level.
+  • Apply the single highest penalty per ingredient only (do not stack).
+  • Typical products with a few yellow flags and no orange/red should land roughly 65–92, not the 40s.
 When ORANGE or RED is present (band already fixed to 0–49 or 0–24), subtract additional points from other ingredients within that band:
   • −12: RED carcinogen or endocrine disruptor.
   • −8: RED allergen, irritant, other health effect, or pollutant.
@@ -40,7 +49,7 @@ When ORANGE or RED is present (band already fixed to 0–49 or 0–24), subtract
   • −3: YELLOW potential carcinogen or endocrine disruptor (when still in orange/red band context).
   • −2: YELLOW allergen, irritant, other health effect, or pollutant.
 If one ingredient has several risks, apply only the SINGLE highest applicable penalty for that ingredient (do not stack multiple risk-type penalties for the same INCI entry).
-Very short INCI lists (about 3 ingredients or fewer): treat the risky fraction as larger — apply stricter penalties within the allowed band so the score reflects concentration of concern.
+Very short INCI lists (about 3 ingredients or fewer): apply slightly stricter penalties within the allowed band, but if all ingredients are only green/yellow the score must still remain 50–100.
 
 3) SOURCES & EVIDENCE (reflect in concern text, briefly)
 Weight opinions of SCCS, ECHA, US EPA, AICIS, ANSES, IARC; then independent research tiered by evidence quality

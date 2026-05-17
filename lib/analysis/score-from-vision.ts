@@ -4,6 +4,7 @@ import { getOpenAI, TEXT_MODEL } from '@/lib/openai';
 import { buildSkincareScoringSystemPrompt } from '@/lib/prompts/scoring-skincare';
 import { runSkincareMethodologyDigestStep } from '@/lib/prompts/methodology-step';
 import { ScoringResultSchema } from '@/lib/analysis/scoring-schema';
+import { enforceScoringConsistency } from '@/lib/analysis/enforce-scoring';
 
 /**
  * Runs methodology digest + scoring for a skincare vision payload (same as /api/analyze).
@@ -44,11 +45,11 @@ Full Ingredient List (INCI): ${visionData.ingredients.join(', ')}
 
 You MUST:
 1. Classify each ingredient as green/yellow/orange/red based on health and environment risks
-2. Determine the score range from the highest-risk ingredient, then set exact score within that range using penalties from other ingredients
-3. Group positive ingredients by category with simple names and benefits
-4. Group negative ingredients by category with simple names, risk levels, and concerns
-5. Write an honest 2-3 sentence verdict for regular consumers
-6. If score < 50, suggest a healthier alternative product
+2. Put green/yellow only in positive_ingredients; orange/red only in negative_ingredients
+3. Set score from highest risk: only green/yellow → 50–100 (never below 50); orange → 25–49; red → 0–24
+4. Apply penalties inside that band only (few yellow flags → usually 65–90, not 40s)
+5. Write a verdict that matches the score band
+6. If and only if score is 25–49, suggest a healthier alternative; if score ≥ 50, healthier_alternative must be null
 
 Use SIMPLE everyday names (e.g. "Vitamin E" not "Tocopheryl Acetate", "Shea Butter" not "Butyrospermum Parkii").
 For negative ingredients, include the technical name in brackets (e.g. "Sulfates [SLS/SLES]").
@@ -96,7 +97,8 @@ Return STRICTLY in this JSON format:
   }
 
   const parsed = JSON.parse(scoringContent);
-  return ScoringResultSchema.parse(parsed);
+  const validated = ScoringResultSchema.parse(parsed);
+  return enforceScoringConsistency(validated);
 }
 
 /** For scripts: lazy OpenAI client. */

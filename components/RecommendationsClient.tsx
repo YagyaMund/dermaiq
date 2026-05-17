@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { getScoreBg, getScoreColor, getScoreLabel } from '@/lib/score-display';
 
 interface HealthierAlt {
   product_name: string;
@@ -24,30 +25,6 @@ interface Props {
 }
 
 export default function RecommendationsClient({ recommendations, userName }: Props) {
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return '#2D6A4F';
-    if (score >= 60) return '#4A7C59';
-    if (score >= 40) return '#D4A574';
-    if (score >= 20) return '#C07040';
-    return '#B85C50';
-  };
-
-  const getScoreLabel = (score: number): string => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    if (score >= 20) return 'Poor';
-    return 'Very Poor';
-  };
-
-  const getScoreBg = (score: number): string => {
-    if (score >= 80) return '#E8F5E9';
-    if (score >= 60) return '#F1F8E9';
-    if (score >= 40) return '#FFF8E1';
-    if (score >= 20) return '#FFF3E0';
-    return '#FFEBEE';
-  };
-
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface)' }}>
       {/* Header */}

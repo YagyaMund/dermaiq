@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import type { AnalysisResult, VisionExtractionResult } from '@/types';
 import { ScoringResultSchema } from '@/lib/analysis/scoring-schema';
+import { enforceScoringConsistency } from '@/lib/analysis/enforce-scoring';
 
 function analysisForStorage(analysis: AnalysisResult): Omit<AnalysisResult, 'from_catalog_cache'> {
   const { from_catalog_cache: _omit, ...rest } = analysis;
@@ -22,7 +23,10 @@ export async function findCachedSkincareAnalysis(
     if (!parsed.success) {
       return null;
     }
-    return { ...parsed.data, from_catalog_cache: true };
+    return enforceScoringConsistency({
+      ...parsed.data,
+      from_catalog_cache: true,
+    });
   } catch (e) {
     console.warn('Catalog cache read failed (continuing without cache):', e);
     return null;
