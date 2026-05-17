@@ -33,7 +33,7 @@ export async function upsertSkincareCatalogEntry(params: {
   lookupKey: string;
   vision: VisionExtractionResult;
   analysis: AnalysisResult;
-  source: 'user_scan' | 'open_beauty_facts' | 'backfill';
+  source: 'user_scan' | 'open_beauty_facts' | 'backfill' | 'alternative_suggestion';
   externalId?: string | null;
   imageHash?: string;
 }): Promise<void> {

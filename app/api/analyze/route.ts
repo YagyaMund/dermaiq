@@ -10,6 +10,8 @@ import {
   buildVisionSkincareUserPrompt,
 } from '@/lib/prompts/vision-skincare';
 import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
+import { resolveHealthierAlternativeScore } from '@/lib/analysis/resolve-healthier-alternative';
+import type OpenAI from 'openai';
 import { makeCatalogLookupKey } from '@/lib/catalog/lookup-key';
 import {
   linkImageHashToCatalog,
@@ -37,8 +39,8 @@ const VisionResultSchema = z.object({
   is_skincare: z.boolean(),
 });
 
-/** Vision + optional cache hit, or methodology digest + scoring (up to three model calls). */
-export const maxDuration = 60;
+/** Vision + scoring; + alternative product scoring when suggested. */
+export const maxDuration = 120;
 
 function normalizeAnalysisResult(result: AnalysisResult): AnalysisResult {
   if (!result.healthier_alternative?.image_url) return result;
@@ -47,6 +49,18 @@ function normalizeAnalysisResult(result: AnalysisResult): AnalysisResult {
     ...result,
     healthier_alternative: { ...result.healthier_alternative, image_url: safe },
   };
+}
+
+async function applyCatalogScoredAlternative(
+  openai: OpenAI,
+  result: AnalysisResult
+): Promise<AnalysisResult> {
+  if (!result.healthier_alternative) return result;
+  const healthier_alternative = await resolveHealthierAlternativeScore(
+    openai,
+    result.healthier_alternative
+  );
+  return normalizeAnalysisResult({ ...result, healthier_alternative });
 }
 
 export async function POST(request: NextRequest) {
@@ -97,13 +111,16 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     const imageHash = hashImageBuffer(buffer);
 
+    const openai = getOpenAI();
+
     const imageCached = await findCachedByImageHash(imageHash);
     if (imageCached) {
       console.log('Catalog cache HIT (image hash):', imageHash.slice(0, 12));
-      const analysisResult = normalizeAnalysisResult({
+      let analysisResult = normalizeAnalysisResult({
         ...imageCached,
         from_catalog_cache: true,
       });
+      analysisResult = await applyCatalogScoredAlternative(openai, analysisResult);
       if (session?.user?.id) {
         try {
           await prisma.analysis.create({
@@ -140,7 +157,6 @@ export async function POST(request: NextRequest) {
     const imageUrl = `data:${image.type};base64,${base64Image}`;
 
     console.log('Step 1: Identifying product and researching ingredients...');
-    const openai = getOpenAI();
     const visionResponse = await openai.chat.completions.create({
       model: VISION_MODEL,
       messages: [
@@ -224,17 +240,6 @@ export async function POST(request: NextRequest) {
       analysisResult = await scoreSkincareFromVision(openai, visionData);
       analysisResult = { ...analysisResult, from_catalog_cache: false };
 
-      if (analysisResult.healthier_alternative?.image_url) {
-        const safe = sanitizeProductImageUrl(analysisResult.healthier_alternative.image_url);
-        analysisResult = {
-          ...analysisResult,
-          healthier_alternative: {
-            ...analysisResult.healthier_alternative,
-            image_url: safe,
-          },
-        };
-      }
-
       await upsertSkincareCatalogEntry({
         lookupKey,
         vision: visionData,
@@ -243,6 +248,8 @@ export async function POST(request: NextRequest) {
         imageHash,
       });
     }
+
+    analysisResult = await applyCatalogScoredAlternative(openai, analysisResult);
 
     if (session?.user?.id) {
       try {
