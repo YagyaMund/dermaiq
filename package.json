@@ -12,7 +12,6 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "deploy": "npx vercel --prod",
-    "catalog:seed": "npx tsx scripts/seed-skincare-catalog-obf.ts",
     "catalog:backfill": "npx tsx scripts/backfill-catalog-scores.ts",
     "catalog:clear": "npx tsx scripts/clear-product-catalog.ts"
   },

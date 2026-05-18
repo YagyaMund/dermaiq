@@ -84,9 +84,9 @@ CREATE INDEX idx_analyses_created_at ON analyses(created_at);
 
 ### Skincare product catalog (global cache)
 
-Separate from per-user `analyses`. Rows in `skincare_product_catalog` store a normalized `lookup_key`, display name, INCI list, optional full scored JSON (`analysis_json`), and `source` (`user_scan`, `open_beauty_facts`, `backfill`). `/api/analyze` checks this table after vision to avoid duplicate OpenAI scoring when the same product is seen again.
+Separate from per-user `analyses`. Rows in `skincare_product_catalog` store a normalized `lookup_key`, display name, INCI list, optional full scored JSON (`analysis_json`), and `source` (`user_scan`, `name_search`, `backfill`). `/api/analyze` checks this table after vision to avoid duplicate OpenAI scoring when the same product is seen again.
 
-Populate with `npm run catalog:seed` (Open Beauty Facts, up to ~1000 SKUs), then optionally `npm run catalog:backfill -- --limit=20` to score rows (uses `OPENAI_API_KEY`; costs tokens).
+Rows are created automatically when users scan or search products. To score existing rows that only have ingredients, run `npm run catalog:backfill -- --limit=20` (uses `OPENAI_API_KEY`; costs tokens).
 
 ## Features Enabled
 

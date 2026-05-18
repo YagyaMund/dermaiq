@@ -2,12 +2,14 @@ import type OpenAI from 'openai';
 import type { AnalysisResult, VisionExtractionResult } from '@/types';
 import { makeCatalogLookupKey } from '@/lib/catalog/lookup-key';
 import {
+  getCatalogStoredIngredients,
   linkImageHashToCatalog,
   upsertSkincareCatalogEntry,
 } from '@/lib/catalog/catalog-service';
 import { resolveCachedAnalysis } from '@/lib/catalog/resolve-cache';
 import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
 import { resolveHealthierAlternativeScore } from '@/lib/analysis/resolve-healthier-alternative';
+import { ingredientsMatchForCache } from '@/lib/analysis/normalize-inci';
 import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
 
 type CatalogSource = 'user_scan' | 'name_search';
@@ -39,7 +41,21 @@ export async function runCatalogAnalysis(
   options: { source: CatalogSource; imageHash?: string }
 ): Promise<AnalysisResult> {
   const lookupKey = makeCatalogLookupKey(visionData.product_name);
-  const cached = await resolveCachedAnalysis(visionData.product_name);
+  let cached = await resolveCachedAnalysis(visionData.product_name);
+
+  if (cached) {
+    const storedInci = await getCatalogStoredIngredients(lookupKey);
+    if (
+      storedInci &&
+      !ingredientsMatchForCache(storedInci, visionData.ingredients)
+    ) {
+      console.log(
+        'Catalog cache skipped — stored INCI does not match current list:',
+        lookupKey
+      );
+      cached = null;
+    }
+  }
 
   let analysisResult: AnalysisResult;
 

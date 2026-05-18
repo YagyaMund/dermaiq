@@ -37,9 +37,10 @@ OUT OF SCOPE (product_type "not_skincare", is_skincare false) — only reject wh
 - Nail polish, perfume/EDP with no skin/hair care role, oral care, household cleaners, laundry, supplements, Rx medications, diapers, sanitary products, tools/devices without a scoreable formula.
 
 Your job:
-1. Identify the product (brand, line, variant).
-2. If in scope, build the fullest INCI list you can: read the label when visible; otherwise use your knowledge of that SKU's published formula.
-3. Set confidence high/medium/low honestly.
+1. Identify the exact product (brand, line, variant, size if visible).
+2. Do NOT invent an INCI list in this step — ingredients may be filled by a dedicated label read or SKU research step.
+3. If you must include ingredients, only list what is clearly readable on the label in order; otherwise return [].
+4. Set confidence high/medium/low honestly.
 
 You MUST use the exact JSON keys requested in the user message.`;
 

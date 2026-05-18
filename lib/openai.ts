@@ -17,5 +17,7 @@ export function getOpenAI(): OpenAI {
 
 export const VISION_MODEL = 'gpt-4o';
 export const TEXT_MODEL = 'gpt-4o';
+/** Dedicated model for INCI / ingredient list retrieval (search, label assist, SKU lookup). */
+export const INGREDIENT_MODEL = 'gpt-5.4-mini';
 /** Cheaper pass that reads full methodology before the main scoring call. */
 export const METHODOLOGY_DIGEST_MODEL = 'gpt-4o-mini';

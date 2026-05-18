@@ -104,10 +104,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const visionData = searchResultToVision(resolved);
+    const visionData = await searchResultToVision(openai, resolved);
+    if (!visionData) {
+      return NextResponse.json(
+        {
+          error: 'Product not found',
+          code: 'not_found',
+          details:
+            'We found the product name but could not verify a reliable ingredient list. Try the full official name or scan the label.',
+        },
+        { status: 404 }
+      );
+    }
+
     const analysisResult = await runCatalogAnalysis(openai, visionData, {
       source: 'name_search',
     });
+
+    const headers = new Headers();
+    headers.set(
+      'X-DermaIQ-Ingredient-Source',
+      visionData.ingredient_source ?? 'gpt_research'
+    );
+    headers.set(
+      'X-DermaIQ-Catalog-Cache',
+      analysisResult.from_catalog_cache ? 'hit' : 'miss'
+    );
 
     if (session?.user?.id) {
       try {
@@ -139,12 +161,6 @@ export async function POST(request: NextRequest) {
     if (guard.incrementOnSuccess) {
       await incrementVisitorScanCount();
     }
-
-    const headers = new Headers();
-    headers.set(
-      'X-DermaIQ-Catalog-Cache',
-      analysisResult.from_catalog_cache ? 'hit' : 'miss'
-    );
 
     return NextResponse.json(analysisResult, { status: 200, headers });
   } catch (error) {

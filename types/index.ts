@@ -56,4 +56,6 @@ export interface VisionExtractionResult {
   confidence: string;
   /** True when in scope for DermaIQ (skin, scalp, hair personal care; see analyze API). */
   is_skincare: boolean;
+  /** How INCI was resolved (internet DB, label OCR, etc.). */
+  ingredient_source?: 'label' | 'gpt_research' | 'merged';
 }

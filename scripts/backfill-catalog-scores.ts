@@ -1,5 +1,5 @@
 /**
- * Scores catalog rows that have ingredients but no analysisJson (Open Beauty Facts seed, etc.).
+ * Scores catalog rows that have ingredients but no analysisJson yet.
  *
  * Run: npx tsx scripts/backfill-catalog-scores.ts --limit=20
  * Requires: DATABASE_URL, OPENAI_API_KEY

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { METHODOLOGY_DIGEST_MODEL } from '@/lib/openai';
 import type { VisionExtractionResult } from '@/types';
 import { SKINCARE_PRODUCT_TYPES } from '@/lib/prompts/vision-skincare';
+import { resolveProductIngredients } from '@/lib/analysis/resolve-product-ingredients';
 
 const SkincareProductTypeZ = z.enum(SKINCARE_PRODUCT_TYPES);
 
@@ -12,7 +13,6 @@ const SearchResolveSchema = z.discriminatedUnion('status', [
     product_name: z.string(),
     brand: z.string(),
     product_type: SkincareProductTypeZ,
-    ingredients: z.array(z.string()).min(1),
     confidence: z.enum(['high', 'medium', 'low']),
     is_skincare: z.literal(true),
   }),
@@ -55,34 +55,34 @@ export async function resolveProductSearch(
 
   const response = await openai.chat.completions.create({
     model: METHODOLOGY_DIGEST_MODEL,
+    temperature: 0.1,
     messages: [
       {
         role: 'system',
-        content: `You resolve skincare / hair / body care product searches into one exact retail SKU and its INCI list.
-Return JSON only. Use published formulas when confident.`,
+        content: `You resolve skincare / hair / body care product searches into ONE exact retail SKU (brand + product line + variant).
+Return JSON only. Do NOT include ingredients in this step — only identify the product.`,
       },
       {
         role: 'user',
         content: `Search query: "${trimmed}"
 
 Rules:
-- status "found": you can identify ONE specific product SKU (include brand in product_name) with a plausible full INCI list (at least 5 ingredients when known).
-- status "too_vague": the query could mean many different products (e.g. only "shampoo", "moisturizer", "Cetaphil" without cleanser vs lotion, or only a brand with no product line). Include a helpful message and 2–3 example queries in "examples".
-- status "not_found": in-scope personal care but you cannot find a real product or INCI list matching the query.
-- status "out_of_scope": not skin/scalp/hair personal care (e.g. medicine, food supplement, household cleaner).
+- status "found": you can identify ONE specific product SKU. Include brand separately.
+- status "too_vague": the query could mean many different products. Include message and 2–3 example queries in "examples".
+- status "not_found": in-scope personal care but you cannot identify a real product matching the query.
+- status "out_of_scope": not skin/scalp/hair personal care.
 
-product_type must be one of: ${types} (not not_skincare when found).
+product_type must be one of: ${types}
 
 Return ONE of:
-{ "status": "found", "product_name": "...", "brand": "...", "product_type": "...", "ingredients": ["..."], "confidence": "high"|"medium"|"low", "is_skincare": true }
+{ "status": "found", "product_name": "...", "brand": "...", "product_type": "...", "confidence": "high"|"medium"|"low", "is_skincare": true }
 { "status": "too_vague", "message": "...", "examples": ["..."] }
 { "status": "not_found", "message": "..." }
 { "status": "out_of_scope", "message": "..." }`,
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 1400,
-    temperature: 0.2,
+    max_tokens: 800,
   });
 
   const text = response.choices[0]?.message?.content;
@@ -103,14 +103,25 @@ Return ONE of:
   }
 }
 
-export function searchResultToVision(
+/** Resolve search hit to vision payload with strict INCI lookup. */
+export async function searchResultToVision(
+  openai: OpenAI,
   found: Extract<ProductSearchResolveResult, { status: 'found' }>
-): VisionExtractionResult {
-  return {
+): Promise<VisionExtractionResult | null> {
+  const researched = await resolveProductIngredients(openai, {
     product_name: found.product_name,
+    brand: found.brand,
     product_type: found.product_type,
-    ingredients: found.ingredients,
-    confidence: found.confidence,
+  });
+
+  if (!researched) return null;
+
+  return {
+    product_name: researched.product_name,
+    product_type: researched.product_type ?? found.product_type,
+    ingredients: researched.ingredients,
+    confidence: researched.confidence,
     is_skincare: true,
+    ingredient_source: researched.source,
   };
 }
