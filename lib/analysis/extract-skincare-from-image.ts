@@ -1,25 +1,14 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
-import {
-  INGREDIENT_MODEL,
-  VISION_MODEL,
-  chatCompletionLimits,
-} from '@/lib/openai';
+import { VISION_MODEL } from '@/lib/openai';
 import type { VisionExtractionResult } from '@/types';
 import {
   SKINCARE_PRODUCT_TYPES,
   VISION_SKINCARE_SYSTEM,
   buildVisionSkincareUserPrompt,
 } from '@/lib/prompts/vision-skincare';
-import {
-  INCI_LABEL_READ_SYSTEM,
-  buildInciFromImageUserPrompt,
-} from '@/lib/prompts/ingredient-extraction';
-import {
-  isPlausibleInciList,
-  normalizeInciList,
-} from '@/lib/analysis/normalize-inci';
 import { resolveProductIngredients } from '@/lib/analysis/resolve-product-ingredients';
+import { resolveProductIngredientsFromImage } from '@/lib/analysis/resolve-product-ingredients-from-image';
 
 const SkincareProductTypeZ = z.enum(SKINCARE_PRODUCT_TYPES);
 
@@ -31,19 +20,44 @@ const IdentifySchema = z.object({
   is_skincare: z.boolean(),
 });
 
-const InciFromImageSchema = z.object({
-  ingredients: z.array(z.string()),
-  confidence: z.enum(['high', 'medium', 'low']),
-  label_fully_visible: z.boolean().optional(),
-});
-
 /**
- * Two-pass image pipeline: identify SKU, read INCI from label, verify via research when needed.
+ * Image scan: identify product + INCI via one GPT vision call; fallback to identify + text INCI lookup.
  */
 export async function extractSkincareFromImage(
   openai: OpenAI,
   imageUrl: string
 ): Promise<VisionExtractionResult | null> {
+  const fromImage = await resolveProductIngredientsFromImage(openai, imageUrl);
+
+  if (fromImage) {
+    if (!fromImage.is_skincare) {
+      return {
+        product_name: fromImage.product_name,
+        product_type: 'not_skincare',
+        ingredients: [],
+        confidence: fromImage.confidence,
+        is_skincare: false,
+      };
+    }
+
+    console.log(
+      'Ingredient resolution (image):',
+      fromImage.source,
+      fromImage.ingredients.length
+    );
+
+    return {
+      product_name: fromImage.product_name,
+      product_type: fromImage.product_type,
+      ingredients: fromImage.ingredients,
+      confidence: fromImage.confidence,
+      is_skincare: true,
+      ingredient_source: fromImage.source,
+    };
+  }
+
+  console.log('Image INCI call failed; falling back to identify + text research');
+
   const identifyResponse = await openai.chat.completions.create({
     model: VISION_MODEL,
     temperature: 0.1,
@@ -81,84 +95,24 @@ export async function extractSkincareFromImage(
     return null;
   }
 
-  const inciResponse = await openai.chat.completions.create({
-    model: INGREDIENT_MODEL,
-    temperature: 0.05,
-    messages: [
-      { role: 'system', content: INCI_LABEL_READ_SYSTEM },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: buildInciFromImageUserPrompt(identified.product_name),
-          },
-          { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } },
-        ],
-      },
-    ],
-    response_format: { type: 'json_object' },
-    ...chatCompletionLimits(INGREDIENT_MODEL, 2500),
-  });
-
-  let labelIngredients: string[] = [];
-  let labelConfidence: 'high' | 'medium' | 'low' = 'low';
-
-  const inciRaw = inciResponse.choices[0]?.message?.content;
-  if (inciRaw) {
-    try {
-      const inciParsed = InciFromImageSchema.parse(JSON.parse(inciRaw));
-      labelIngredients = normalizeInciList(inciParsed.ingredients);
-      labelConfidence = inciParsed.confidence;
-    } catch {
-      /* use research fallback */
-    }
-  }
-
   const brand =
     identified.brand ??
     identified.product_name.split(/\s+/)[0] ??
     '';
 
-  const needsResearch =
-    !isPlausibleInciList(labelIngredients, 5) || labelConfidence === 'low';
-
-  if (!needsResearch && isPlausibleInciList(labelIngredients, 5)) {
-    return {
-      product_name: identified.product_name,
-      product_type: identified.product_type,
-      ingredients: labelIngredients,
-      confidence: labelConfidence,
-      is_skincare: true,
-    };
-  }
-
   const researched = await resolveProductIngredients(openai, {
     product_name: identified.product_name,
     brand,
     product_type: identified.product_type,
-    label_ingredients:
-      labelIngredients.length > 0 ? labelIngredients : undefined,
   });
 
   console.log(
-    'Ingredient resolution:',
+    'Ingredient resolution (fallback):',
     researched?.source ?? 'failed',
     researched?.ingredients.length ?? 0
   );
 
-  if (!researched) {
-    if (isPlausibleInciList(labelIngredients, 3)) {
-      return {
-        product_name: identified.product_name,
-        product_type: identified.product_type,
-        ingredients: labelIngredients,
-        confidence: 'medium',
-        is_skincare: true,
-      };
-    }
-    return null;
-  }
+  if (!researched) return null;
 
   return {
     product_name: researched.product_name,

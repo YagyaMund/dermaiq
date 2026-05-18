@@ -8,6 +8,22 @@ STRICT RULES:
 
 Return JSON only.`;
 
+export const PRODUCT_IMAGE_INGREDIENT_SYSTEM = `You are DermaIQ's cosmetic product analyst for skincare, hair, and body care.
+
+From a product photo:
+1. Identify the exact retail SKU (brand, product line, variant, size if visible) from packaging — front, side, or any visible label text. You do NOT need the INCI panel to be visible.
+2. Retrieve the full published INCI ingredient list for that exact SKU from formula knowledge (same as a name search would).
+
+STRICT RULES:
+- Do NOT require or transcribe a full INCI panel on the photo. Packaging branding is enough to identify the product.
+- Return the complete INCI list for the identified SKU only.
+- Use standard INCI nomenclature in descending concentration order.
+- Do NOT substitute a different product or generic formula.
+- If the product is clearly out of scope (makeup-only color, drugs, cleaners, supplements), set is_skincare false and product_type "not_skincare" with ingredients [].
+- If you cannot identify the product or its formula, set ingredients [] and rejected_reason.
+
+Return JSON only.`;
+
 export const INGREDIENT_RESEARCH_SYSTEM = `You are a cosmetic chemist retrieving the official INCI ingredient list for one exact retail product (skincare, hair, or body care).
 
 STRICT RULES:
@@ -20,6 +36,23 @@ STRICT RULES:
 7. Typical products should have at least 8–20 INCI entries when the formula is known.
 
 Return JSON only.`;
+
+export function buildProductImageIngredientPrompt(): string {
+  return `Look at this product photo. Identify the product from packaging (brand, name, variant) and return its full INCI list.
+
+Return STRICTLY:
+{
+  "product_name": "official full product name for this exact SKU",
+  "brand": "brand name",
+  "product_type": "cleanser" | "moisturizer" | "serum" | "sunscreen" | "shampoo" | "hair_oil" | "deodorant" | etc.,
+  "ingredients": ["INCI 1", "INCI 2", ... in order],
+  "confidence": "high" | "medium" | "low",
+  "is_skincare": true/false,
+  "rejected_reason": null or string if you cannot identify the product or provide a reliable INCI list
+}
+
+is_skincare: true for in-scope skin, scalp, or hair personal care; false for out-of-scope items.`;
+}
 
 export function buildInciFromImageUserPrompt(productHint?: string): string {
   const hint = productHint

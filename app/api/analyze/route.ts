@@ -74,9 +74,9 @@ export async function POST(request: NextRequest) {
     if (!visionData) {
       return NextResponse.json(
         {
-          error: 'Could not read ingredients from this product',
+          error: 'Could not analyze this product from the photo',
           details:
-            'Please photograph the full INCI list on the label in good light, or search by exact product name instead.',
+            'We could not identify the product or find its ingredient list. Try a clearer photo showing the brand and product name on the front of the pack, or search by exact product name instead.',
         },
         { status: 422 }
       );
@@ -95,9 +95,9 @@ export async function POST(request: NextRequest) {
     if (!isPlausibleInciList(visionData.ingredients, 5)) {
       return NextResponse.json(
         {
-          error: 'Could not identify a complete ingredient list',
+          error: 'Could not find a complete ingredient list',
           details:
-            'We could not read a reliable INCI list. Use a clearer label photo or search by exact product name (brand + line).',
+            'We identified the product but could not retrieve a reliable INCI list. Try searching by exact product name (brand + product line) instead.',
         },
         { status: 422 }
       );

@@ -51,18 +51,19 @@ export function buildVisionSkincareUserPrompt(): string {
 If it is IN SCOPE for dermatology / skin & hair personal care (${types}):
 - product_type must be one of those exact strings (best fit; e.g. Mamaearth Rosemary Essential Oil → hair_oil).
 - is_skincare: true
-- ingredients: full INCI array
+- ingredients: [] (filled in a later step)
 
 If it is OUT OF SCOPE (makeup-only, drugs, cleaners, supplements, etc.):
 - product_type: "not_skincare"
 - is_skincare: false
 - ingredients: [] or whatever is visible (will be ignored)
 
-Return STRICTLY this JSON shape:
+Return STRICTLY this JSON shape (ingredients will be filled by a separate step — use [] here):
 {
   "product_name": "Full Product Name",
+  "brand": "Brand name",
   "product_type": "${types} | not_skincare",
-  "ingredients": ["INCI1", "INCI2"],
+  "ingredients": [],
   "confidence": "high" | "medium" | "low",
   "is_skincare": true/false
 }`;
