@@ -38,7 +38,7 @@ ${methodologyDigest.titanium_dioxide_notes ? `\nTitanium dioxide notes: ${method
 
 ${REGULAR_SKIN_EVALUATION_CONTEXT}
 
-Analyze this ${visionData.product_type} product using the risk-based scoring system (score driven by highest-risk ingredient; red < 25, orange < 50, only green/yellow → 50-100):
+Analyze this ${visionData.product_type} product using the risk-based scoring system (Very Poor 0–20, Poor 20–40, Fair 40–60, Good 60–80, Excellent 80–100; driven by highest-risk ingredient):
 
 Product: ${visionData.product_name}
 Type: ${visionData.product_type}
@@ -50,7 +50,7 @@ You MUST:
 2. Set the score band from the highest-risk ingredient, then apply penalties within that band
 3. Group green/yellow ingredients under positive_ingredients; orange/red under negative_ingredients
 4. Write an honest 2–3 sentence verdict for regular consumers
-5. If final score < 50, suggest a healthier alternative with estimated_score in the correct band; if score ≥ 50, set healthier_alternative to null
+5. If final score < 40, suggest a healthier alternative with estimated_score in the correct band; if score ≥ 40, set healthier_alternative to null
 
 Use SIMPLE everyday names (e.g. "Vitamin E" not "Tocopheryl Acetate", "Shea Butter" not "Butyrospermum Parkii").
 For negative ingredients, include the technical name in brackets (e.g. "Sulfates [SLS/SLES]").
@@ -84,7 +84,7 @@ Return STRICTLY in this JSON format:
     "estimated_score": <number>,
     "reason": "Why this is a better choice",
     "image_url": "https://example.com/product-image.jpg" OR null
-  ${'}'} OR null if score >= 50
+  ${'}'} OR null if score >= 40
 }`,
       },
     ],

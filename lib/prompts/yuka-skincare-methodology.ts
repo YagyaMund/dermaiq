@@ -26,19 +26,19 @@ REFERENCE: SKINCARE / COSMETIC SCORING (Yuka-aligned methodology for DermaIQ)
 - Assign each ingredient a risk level from current science for health and environment:
   endocrine disruption, carcinogenic, allergenic, irritant, pollutant.
 - Four risk levels only: GREEN (risk-free), YELLOW (low risk), ORANGE (moderate), RED (high-risk).
-- Overall score is driven by the HIGHEST-RISK ingredient present:
-  • Any RED → final score in the RED band: 0–24 (strictly below 25/100).
-  • Highest is ORANGE (no red) → score in the ORANGE band: 25–49 (strictly below 50/100).
-  • Only GREEN and/or YELLOW → score in the GREEN band: 50–100 inclusive.
+- Overall score is driven by the HIGHEST-RISK ingredient present (display bands):
+  • Any RED → Very Poor band: 0–20.
+  • Highest is ORANGE (no red) → Poor band: 20–40.
+  • Only GREEN and/or YELLOW → Fair to Excellent: 40–100 (Fair 40–60, Good 60–80, Excellent 80–100).
 - YELLOW means low risk, not moderate: do not classify yellow ingredients as orange unless evidence supports moderate risk.
-- Gentle, widely used cleansers/moisturizers with mostly green/yellow INCI (e.g. simple dermatologic brands) should typically score Good (65–79) or Excellent (80+), not Poor.
+- Gentle, widely used cleansers/moisturizers with mostly green/yellow INCI (e.g. simple dermatologic brands) should typically score Good (60–80) or Excellent (80+), not Poor.
 
 2) PENALTIES (apply within the band determined above)
-When only GREEN and/or YELLOW ingredients (green band 50–100):
+When only GREEN and/or YELLOW ingredients (40–100 band):
   • −10 points: ingredient with potential carcinogenic OR endocrine-disruptor concern at low/yellow level (as per penalty doc).
   • −7 points: ingredient with several of: allergen, irritant, other health effect, pollutant (yellow/low).
   • −2 points: ingredient with only ONE of: allergen, irritant, other health effect, pollutant (yellow/low).
-When ORANGE or RED is present (band already fixed to 0–49 or 0–24), subtract additional points from other ingredients within that band:
+When ORANGE or RED is present (band already fixed to 0–40), subtract additional points from other ingredients within that band:
   • −12: RED carcinogen or endocrine disruptor.
   • −8: RED allergen, irritant, other health effect, or pollutant.
   • −6: ORANGE potential carcinogen or endocrine disruptor.

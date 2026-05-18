@@ -27,7 +27,7 @@ INGREDIENT GROUPING (only non-empty categories):
 Do NOT use a "Synthetic Chemicals" category.
 
 HEALTHIER ALTERNATIVE:
-If final score < 50, suggest a real, widely available cleaner alternative in the same product category (skin or hair) with estimated_score in the correct band. If score ≥ 50, set healthier_alternative to null.
+If final score < 40 (Very Poor or Poor), suggest a real, widely available cleaner alternative in the same product category (skin or hair) with estimated_score in the correct band. If score ≥ 40, set healthier_alternative to null.
 
 Use SIMPLE names for consumers (e.g. "Vitamin E" with INCI in brackets where helpful).
 `.trim();

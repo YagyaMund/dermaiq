@@ -3,6 +3,12 @@
 import { useState } from 'react';
 import type { AnalysisResult, IngredientCategory } from '@/types';
 import AiDisclaimer from '@/components/AiDisclaimer';
+import {
+  getScoreBg,
+  getScoreColor,
+  getScoreLabel,
+  SCORE_SCALE_SEGMENTS,
+} from '@/lib/score-display';
 import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
 
 function AltProductImage({
@@ -86,39 +92,6 @@ function ScoreRing({ score }: { score: number }) {
 interface ResultsDisplayProps {
   result: AnalysisResult;
 }
-
-// ─── Score helpers ────────────────────────────────────────────────────────────
-// Bands: 0–24 Very Poor, 25–49 Poor, 50–64 Fair, 65–79 Good, 80–100 Excellent
-const getScoreColor = (s: number) => {
-  if (s >= 80) return '#2D6A4F';
-  if (s >= 65) return '#4A7C59';
-  if (s >= 50) return '#C49A3C';
-  if (s >= 25) return '#C07040';
-  return '#B85C50';
-};
-const getScoreLabel = (s: number) => {
-  if (s >= 80) return 'Excellent';
-  if (s >= 65) return 'Good';
-  if (s >= 50) return 'Fair';
-  if (s >= 25) return 'Poor';
-  return 'Very Poor';
-};
-const getScoreBg = (s: number) => {
-  if (s >= 80) return '#E8F5E9';
-  if (s >= 65) return '#F1F8E9';
-  if (s >= 50) return '#FFFBEA';
-  if (s >= 25) return '#FFF3E0';
-  return '#FFEBEE';
-};
-
-// Grading scale segments — widths match score ranges (25+25+15+15+20 = 100)
-const SCALE_SEGMENTS = [
-  { width: 25, color: '#B85C50', label: 'Very Poor' },
-  { width: 25, color: '#C07040', label: 'Poor' },
-  { width: 15, color: '#C49A3C', label: 'Fair' },
-  { width: 15, color: '#4A7C59', label: 'Good' },
-  { width: 20, color: '#2D6A4F', label: 'Excellent' },
-];
 
 // ─── Risk badge ───────────────────────────────────────────────────────────────
 const RISK_CONFIG: Record<string, { bg: string; color: string; dot: string; label: string }> = {
@@ -241,7 +214,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
         >
           {/* Coloured segments + dot marker */}
           <div className="relative flex h-3.5 rounded-full overflow-hidden mb-2.5">
-            {SCALE_SEGMENTS.map((seg, i) => (
+            {SCORE_SCALE_SEGMENTS.map((seg, i) => (
               <div
                 key={i}
                 className="h-full"
@@ -263,7 +236,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
             className="flex text-[10px] sm:text-xs font-medium"
             style={{ color: 'var(--text-secondary)' }}
           >
-            {SCALE_SEGMENTS.map((seg, i) => (
+            {SCORE_SCALE_SEGMENTS.map((seg, i) => (
               <span key={i} className="text-center" style={{ width: `${seg.width}%` }}>
                 {seg.label}
               </span>
