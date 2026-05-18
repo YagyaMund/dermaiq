@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
-import { INGREDIENT_MODEL } from '@/lib/openai';
+import { INGREDIENT_MODEL, chatCompletionLimits } from '@/lib/openai';
 import { SKINCARE_PRODUCT_TYPES } from '@/lib/prompts/vision-skincare';
 import {
   INGREDIENT_RESEARCH_SYSTEM,
@@ -61,7 +61,7 @@ export async function resolveProductIngredients(
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 3000,
+    ...chatCompletionLimits(INGREDIENT_MODEL, 3000),
   });
 
   const text = response.choices[0]?.message?.content;

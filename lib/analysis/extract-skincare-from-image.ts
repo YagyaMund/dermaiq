@@ -1,6 +1,10 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
-import { INGREDIENT_MODEL, VISION_MODEL } from '@/lib/openai';
+import {
+  INGREDIENT_MODEL,
+  VISION_MODEL,
+  chatCompletionLimits,
+} from '@/lib/openai';
 import type { VisionExtractionResult } from '@/types';
 import {
   SKINCARE_PRODUCT_TYPES,
@@ -94,7 +98,7 @@ export async function extractSkincareFromImage(
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 2500,
+    ...chatCompletionLimits(INGREDIENT_MODEL, 2500),
   });
 
   let labelIngredients: string[] = [];
