@@ -32,7 +32,7 @@ export async function runSkincareMethodologyDigestStep(
 
 You must read the entire REFERENCE block in the user message. Then produce a concise alignment_summary (plain text) that states, in your own words:
 - That all scores assume regular (normal, non-sensitive) adult skin unless the product is only for sensitive/baby skin.
-- Which score band rules apply (red 0–20 Very Poor, orange 20–40 Poor, green/yellow 40–100 Fair/Good/Excellent) and how penalties interact.
+- Which score band rules apply (proportional mix: single orange among many greens → Fair/Good 55+, multiple orange/red → Poor/Very Poor) and how penalties interact.
 - That organic labels are ignored for scoring; quantities are not inferred.
 - Precautionary principle and tiered evidence (SCCS/ECHA/IARC, etc.).
 - Any titanium dioxide / [nano] handling implied by the INCI list and product type.

@@ -26,19 +26,23 @@ REFERENCE: SKINCARE / COSMETIC SCORING (Yuka-aligned methodology for DermaIQ)
 - Assign each ingredient a risk level from current science for health and environment:
   endocrine disruption, carcinogenic, allergenic, irritant, pollutant.
 - Four risk levels only: GREEN (risk-free), YELLOW (low risk), ORANGE (moderate), RED (high-risk).
-- Overall score is driven by the HIGHEST-RISK ingredient present (display bands):
-  • Any RED → Very Poor band: 0–20.
-  • Highest is ORANGE (no red) → Poor band: 20–40.
-  • Only GREEN and/or YELLOW → Fair to Excellent: 40–100 (Fair 40–60, Good 60–80, Excellent 80–100).
+- Overall score reflects the FULL formula mix (count and severity of concerns), not a hard ceiling from one ingredient alone.
+- Score bands (target ranges after penalties):
+  • Any RED with serious concern, or multiple RED/ORANGE drivers → Very Poor 0–20 or Poor 20–40.
+  • TWO OR MORE ORANGE ingredients (no red), or one ORANGE plus other significant yellow flags → Poor 20–40.
+  • Exactly ONE ORANGE among mostly GREEN/YELLOW (e.g. sunscreen with 15+ safe filters + fragrance) → Fair to Good 55–78. Do NOT score below 55.
+  • Only YELLOW negatives (including generic Parfum/Fragrance on regular skin) → Good 65–85.
+  • All GREEN or GREEN+YELLOW with no orange/red listed → Good to Excellent 70–100 (Fair 40–60 only if several yellow −2/−7 penalties stack).
 - YELLOW means low risk, not moderate: do not classify yellow ingredients as orange unless evidence supports moderate risk.
-- Gentle, widely used cleansers/moisturizers with mostly green/yellow INCI (e.g. simple dermatologic brands) should typically score Good (60–80) or Excellent (80+), not Poor.
+- Generic "Parfum", "Fragrance", or "Aroma" without named allergens → YELLOW for regular adult skin, not ORANGE. Reserve ORANGE for fragrance mixes with multiple known sensitizers or leave-on products dominated by scent chemicals.
+- Gentle, widely used cleansers/moisturizers/sunscreens with mostly green/yellow INCI should typically score Good (60–80) or Excellent (80+), not Poor.
 
 2) PENALTIES (apply within the band determined above)
 When only GREEN and/or YELLOW ingredients (40–100 band):
   • −10 points: ingredient with potential carcinogenic OR endocrine-disruptor concern at low/yellow level (as per penalty doc).
   • −7 points: ingredient with several of: allergen, irritant, other health effect, pollutant (yellow/low).
   • −2 points: ingredient with only ONE of: allergen, irritant, other health effect, pollutant (yellow/low).
-When ORANGE or RED is present (band already fixed to 0–40), subtract additional points from other ingredients within that band:
+When multiple ORANGE or any RED is present (Poor / Very Poor context), subtract additional points from other ingredients within that band:
   • −12: RED carcinogen or endocrine disruptor.
   • −8: RED allergen, irritant, other health effect, or pollutant.
   • −6: ORANGE potential carcinogen or endocrine disruptor.

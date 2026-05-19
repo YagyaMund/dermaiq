@@ -3,6 +3,7 @@ import type { AnalysisResult, VisionExtractionResult } from '@/types';
 import { getOpenAI, TEXT_MODEL } from '@/lib/openai';
 import { buildSkincareScoringSystemPrompt } from '@/lib/prompts/scoring-skincare';
 import { runSkincareMethodologyDigestStep } from '@/lib/prompts/methodology-step';
+import { calibrateProductScore } from '@/lib/analysis/calibrate-score';
 import { ScoringResultSchema } from '@/lib/analysis/scoring-schema';
 import { REGULAR_SKIN_EVALUATION_CONTEXT } from '@/lib/prompts/regular-skin-context';
 
@@ -38,7 +39,7 @@ ${methodologyDigest.titanium_dioxide_notes ? `\nTitanium dioxide notes: ${method
 
 ${REGULAR_SKIN_EVALUATION_CONTEXT}
 
-Analyze this ${visionData.product_type} product using the risk-based scoring system (Very Poor 0–20, Poor 20–40, Fair 40–60, Good 60–80, Excellent 80–100; driven by highest-risk ingredient):
+Analyze this ${visionData.product_type} product using the risk-based scoring system (Very Poor 0–20, Poor 20–40, Fair 40–60, Good 60–80, Excellent 80–100; proportional to the full formula — one lone orange/yellow concern in an otherwise clean list must score ≥55):
 
 Product: ${visionData.product_name}
 Type: ${visionData.product_type}
@@ -47,7 +48,7 @@ Full Ingredient List (INCI): ${visionData.ingredients.join(', ')}
 
 You MUST:
 1. Classify each ingredient as green/yellow/orange/red using the Yuka methodology in PART A
-2. Set the score band from the highest-risk ingredient, then apply penalties within that band
+2. Score from the full ingredient mix per PART A (single mild orange → Fair/Good 55–78, not Poor)
 3. Group green/yellow ingredients under positive_ingredients; orange/red under negative_ingredients
 4. Write an honest 2–3 sentence verdict for regular consumers
 5. If final score < 40, suggest a healthier alternative with estimated_score in the correct band; if score ≥ 40, set healthier_alternative to null
@@ -98,7 +99,7 @@ Return STRICTLY in this JSON format:
   }
 
   const parsed = JSON.parse(scoringContent);
-  return ScoringResultSchema.parse(parsed);
+  return calibrateProductScore(ScoringResultSchema.parse(parsed));
 }
 
 /** For scripts: lazy OpenAI client. */
