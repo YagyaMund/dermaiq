@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
-import { METHODOLOGY_DIGEST_MODEL } from '@/lib/openai';
+import { METHODOLOGY_DIGEST_MODEL, chatCompletionLimits } from '@/lib/openai';
 import type { VisionExtractionResult } from '@/types';
 import { SKINCARE_PRODUCT_TYPES } from '@/lib/prompts/vision-skincare';
 import { resolveProductIngredients } from '@/lib/analysis/resolve-product-ingredients';
@@ -82,7 +82,7 @@ Return ONE of:
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 800,
+    ...chatCompletionLimits(METHODOLOGY_DIGEST_MODEL, 800),
   });
 
   const text = response.choices[0]?.message?.content;

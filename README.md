@@ -162,9 +162,10 @@ export const maxDuration = 60; // seconds — vision + digest + scoring (Vercel 
 Edit `lib/openai.ts`:
 
 ```typescript
-export const VISION_MODEL = 'gpt-4o'; // or 'gpt-4-vision-preview'
-export const TEXT_MODEL = 'gpt-4o';
-export const METHODOLOGY_DIGEST_MODEL = 'gpt-4o-mini'; // see lib/openai.ts
+export const VISION_MODEL = 'gpt-5.4-mini';
+export const TEXT_MODEL = 'gpt-5.4-mini';
+export const INGREDIENT_MODEL = 'gpt-5.4-mini';
+export const METHODOLOGY_DIGEST_MODEL = 'gpt-5.4-nano'; // see lib/openai.ts
 ```
 
 ## Limitations (MVP)

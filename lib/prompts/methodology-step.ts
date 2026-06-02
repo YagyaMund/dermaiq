@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { YUKA_SKINCARE_METHODOLOGY_REFERENCE } from './yuka-skincare-methodology';
-import { METHODOLOGY_DIGEST_MODEL } from '@/lib/openai';
+import { METHODOLOGY_DIGEST_MODEL, chatCompletionLimits } from '@/lib/openai';
 
 const DigestSchema = z.object({
   alignment_summary: z.string().max(2500),
@@ -52,7 +52,7 @@ Omit titanium_dioxide_notes entirely (do not use null) when titanium dioxide is 
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 700,
+    ...chatCompletionLimits(METHODOLOGY_DIGEST_MODEL, 700),
     temperature: 0.2,
   });
 

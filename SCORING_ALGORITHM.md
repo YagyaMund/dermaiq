@@ -5,8 +5,8 @@ DermaIQ scores **skincare products only** (see vision gate in `app/api/analyze/r
 ## Pipeline order
 
 1. **Vision** — Must output `is_skincare: true` and a `product_type` in the allowed skincare enum; otherwise **422** (no score).
-2. **Methodology digest** (LLM, `gpt-4o-mini`) — Reads the full reference text and writes a short `alignment_summary` (and optional titanium dioxide notes).
-3. **Scoring** (LLM, `gpt-4o`) — System prompt embeds the same reference again (PART A) plus role/output rules (PART B). User message includes the digest from step 2 so the scorer explicitly “sees” the pre-pass.
+2. **Methodology digest** (LLM, `gpt-5.4-nano`) — Reads the full reference text and writes a short `alignment_summary` (and optional titanium dioxide notes).
+3. **Scoring** (LLM, `gpt-5.4-mini`) — System prompt embeds the same reference again (PART A) plus role/output rules (PART B). User message includes the digest from step 2 so the scorer explicitly “sees” the pre-pass.
 
 Database writes (logged-in users) still store one `score` as both quality and safety for compatibility (`prisma.analysis`).
 

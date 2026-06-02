@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
 import type { AnalysisResult, VisionExtractionResult } from '@/types';
-import { getOpenAI, TEXT_MODEL } from '@/lib/openai';
+import { getOpenAI, TEXT_MODEL, chatCompletionLimits } from '@/lib/openai';
 import { buildSkincareScoringSystemPrompt } from '@/lib/prompts/scoring-skincare';
 import { runSkincareMethodologyDigestStep } from '@/lib/prompts/methodology-step';
 import { calibrateProductScore } from '@/lib/analysis/calibrate-score';
@@ -90,7 +90,7 @@ Return STRICTLY in this JSON format:
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 3500,
+    ...chatCompletionLimits(TEXT_MODEL, 3500),
   });
 
   const scoringContent = scoringResponse.choices[0].message.content;

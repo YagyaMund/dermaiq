@@ -4,11 +4,11 @@ DermaIQ uses **skincare-only** analysis with a **Yuka-aligned** public methodolo
 
 ## Pipeline overview
 
-1. **Vision (Step 1)** — `VISION_MODEL` (`gpt-4o`): identify product, restrict to **skincare** categories, output INCI list.  
+1. **Vision (Step 1)** — `VISION_MODEL` (`gpt-5.4-mini`): identify product, restrict to **skincare** categories, output INCI list.  
    Code: `lib/prompts/vision-skincare.ts` + `app/api/analyze/route.ts`
-2. **Methodology digest (Step 1b)** — `METHODOLOGY_DIGEST_MODEL` (`gpt-4o-mini`): read the full reference block and emit a short alignment summary **before** scoring.  
+2. **Methodology digest (Step 1b)** — `METHODOLOGY_DIGEST_MODEL` (`gpt-5.4-nano`): read the full reference block and emit a short alignment summary **before** scoring.  
    Code: `lib/prompts/methodology-step.ts`
-3. **Scoring (Step 2)** — `TEXT_MODEL` (`gpt-4o`): risk dots, bands, penalties, grouping, JSON result. System prompt = reference + role/output rules.  
+3. **Scoring (Step 2)** — `TEXT_MODEL` (`gpt-5.4-mini`): risk dots, bands, penalties, grouping, JSON result. System prompt = reference + role/output rules.  
    Code: `lib/prompts/scoring-skincare.ts` + `app/api/analyze/route.ts`
 
 Non-skincare products are rejected with HTTP 422 (no scoring).
@@ -38,8 +38,8 @@ Summary:
 }
 ```
 
-**Model:** `gpt-4o` (vision)  
-**API:** `response_format: { type: 'json_object' }`, `max_tokens: 1500`
+**Model:** `gpt-5.4-mini` (vision)  
+**API:** `response_format: { type: 'json_object' }`, `max_completion_tokens` via `chatCompletionLimits`
 
 ---
 
@@ -58,7 +58,7 @@ Summary:
 }
 ```
 
-**Model:** `gpt-4o-mini` (`METHODOLOGY_DIGEST_MODEL` in `lib/openai.ts`)  
+**Model:** `gpt-5.4-nano` (`METHODOLOGY_DIGEST_MODEL` in `lib/openai.ts`)  
 **Purpose:** Ensures the long methodology document is **processed in a separate call** before the final scorer; the digest is injected into the scoring user message.
 
 ---
@@ -75,8 +75,8 @@ Summary of PART B:
 
 **User prompt (constructed in route):** Starts with `=== METHODOLOGY DIGEST ===` (from Step 1b), then product name, type, ingredient count, full INCI list, and the same JSON schema as before (`score`, `positive_ingredients`, `negative_ingredients`, `verdict`, `healthier_alternative`).
 
-**Model:** `gpt-4o`  
-**API:** `response_format: { type: 'json_object' }`, `max_tokens: 3500`
+**Model:** `gpt-5.4-mini`  
+**API:** `response_format: { type: 'json_object' }`, `max_completion_tokens` via `chatCompletionLimits`
 
 ---
 

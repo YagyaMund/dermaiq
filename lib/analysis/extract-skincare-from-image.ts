@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
-import { VISION_MODEL } from '@/lib/openai';
+import { VISION_MODEL, chatCompletionLimits } from '@/lib/openai';
 import type { VisionExtractionResult } from '@/types';
 import {
   SKINCARE_PRODUCT_TYPES,
@@ -72,7 +72,7 @@ export async function extractSkincareFromImage(
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 1200,
+    ...chatCompletionLimits(VISION_MODEL, 1200),
   });
 
   const identifyRaw = identifyResponse.choices[0]?.message?.content;
