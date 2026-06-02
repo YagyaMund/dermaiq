@@ -182,9 +182,30 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   const score = result.score;
   const scorePercent = Math.min(100, Math.max(0, score));
 
+  const searchMatch = result.search_match;
+
   return (
     <div className="space-y-4 animate-fadeIn">
       <AiDisclaimer className="px-1" />
+
+      {searchMatch?.match_type === 'best_match' && (
+        <div
+          className="rounded-xl px-4 py-3 text-xs sm:text-sm leading-relaxed"
+          style={{
+            backgroundColor: '#F0F7F4',
+            color: 'var(--text-secondary)',
+            border: '1px solid #C8E6D4',
+          }}
+        >
+          <p>
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Showing closest match
+            </span>
+            {' '}for &ldquo;{searchMatch.query}&rdquo;
+            {searchMatch.note ? ` — ${searchMatch.note}` : ''}.
+          </p>
+        </div>
+      )}
 
       {/* ── 1. Score Card ───────────────────────────────────────────────────── */}
       <Card className="p-5 sm:p-6">

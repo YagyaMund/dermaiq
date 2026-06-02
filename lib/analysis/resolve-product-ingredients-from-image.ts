@@ -46,7 +46,7 @@ export async function resolveProductIngredientsFromImage(
       },
     ],
     response_format: { type: 'json_object' },
-    ...chatCompletionLimits(INGREDIENT_MODEL, 3500),
+    ...chatCompletionLimits(INGREDIENT_MODEL, 6000),
   });
 
   const text = response.choices[0]?.message?.content;

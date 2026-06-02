@@ -19,8 +19,8 @@ export function getOpenAI(): OpenAI {
 export const VISION_MODEL = 'gpt-5.4-mini';
 /** Main scoring pass (methodology + JSON result). */
 export const TEXT_MODEL = 'gpt-5.4-mini';
-/** INCI / ingredient list retrieval (search, label assist, SKU lookup). */
-export const INGREDIENT_MODEL = 'gpt-5.4-mini';
+/** INCI extraction / research (full formula lists; vision + text). */
+export const INGREDIENT_MODEL = 'gpt-5.4';
 /** Cheaper pass that reads full methodology before the main scoring call. */
 export const METHODOLOGY_DIGEST_MODEL = 'gpt-5.4-nano';
 

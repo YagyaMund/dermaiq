@@ -15,6 +15,8 @@ const SearchResolveSchema = z.discriminatedUnion('status', [
     product_type: SkincareProductTypeZ,
     confidence: z.enum(['high', 'medium', 'low']),
     is_skincare: z.literal(true),
+    match_type: z.enum(['exact', 'best_match']).default('exact'),
+    match_note: z.string().optional(),
   }),
   z.object({
     status: z.literal('too_vague'),
@@ -36,13 +38,23 @@ export type ProductSearchResolveResult = z.infer<typeof SearchResolveSchema>;
 const GENERIC_ONLY =
   /^(skin\s*care|skincare|face\s*wash|body\s*wash|shampoo|conditioner|moisturizer|moisturiser|cream|lotion|soap|cleanser|sunscreen|serum|toner|gel|oil|mask|spf)$/i;
 
+function isGenericToken(word: string): boolean {
+  return GENERIC_ONLY.test(word.trim());
+}
+
+/** True when the query includes at least one brand- or product-like token (not only category words). */
+export function hasSpecificSearchSignal(query: string): boolean {
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  return words.some((w) => w.length >= 3 && !isGenericToken(w));
+}
+
 /** Fast client-side guard; server still validates with the model. */
 export function isObviouslyVagueSearchQuery(query: string): boolean {
   const q = query.trim();
-  if (q.length < 4) return true;
+  if (q.length < 3) return true;
   const words = q.split(/\s+/).filter(Boolean);
-  if (words.length === 1 && GENERIC_ONLY.test(words[0]!)) return true;
-  if (words.length <= 2 && words.every((w) => GENERIC_ONLY.test(w))) return true;
+  if (words.length === 1 && isGenericToken(words[0]!)) return true;
+  if (words.length >= 2 && !hasSpecificSearchSignal(q)) return true;
   return false;
 }
 
@@ -59,23 +71,34 @@ export async function resolveProductSearch(
     messages: [
       {
         role: 'system',
-        content: `You resolve skincare / hair / body care product searches into ONE exact retail SKU (brand + product line + variant).
-Return JSON only. Do NOT include ingredients in this step — only identify the product.`,
+        content: `You resolve skincare / hair / body care product searches into ONE real retail SKU sold in India or globally.
+
+Prefer returning status "found" with the best relevant match rather than "not_found" when the user's intent is clear.
+
+Match types:
+- match_type "exact": query names a specific SKU (or trivial spelling variant).
+- match_type "best_match": query is partial, informal, or category-level but clearly points to one flagship / best-selling SKU (e.g. "cetaphil cleanser" → Cetaphil Gentle Skin Cleanser; "mamaearth shampoo" → their most popular shampoo line).
+
+Use "too_vague" ONLY when many unrelated products fit equally (e.g. "moisturizer" with no brand).
+Use "not_found" ONLY when nothing in-scope is a reasonable match.
+Use "out_of_scope" for non personal-care items.
+
+Return JSON only. Do NOT include ingredients.`,
       },
       {
         role: 'user',
         content: `Search query: "${trimmed}"
 
 Rules:
-- status "found": you can identify ONE specific product SKU. Include brand separately.
-- status "too_vague": the query could mean many different products. Include message and 2–3 example queries in "examples".
-- status "not_found": in-scope personal care but you cannot identify a real product matching the query.
+- status "found": pick ONE real product SKU. Include brand separately, match_type, and optional match_note (short, e.g. "Best match for your search").
+- status "too_vague": many unrelated products fit; include message and 2–3 example queries in "examples".
+- status "not_found": in-scope personal care but no reasonable product match.
 - status "out_of_scope": not skin/scalp/hair personal care.
 
 product_type must be one of: ${types}
 
 Return ONE of:
-{ "status": "found", "product_name": "...", "brand": "...", "product_type": "...", "confidence": "high"|"medium"|"low", "is_skincare": true }
+{ "status": "found", "product_name": "...", "brand": "...", "product_type": "...", "confidence": "high"|"medium"|"low", "is_skincare": true, "match_type": "exact"|"best_match", "match_note": "optional" }
 { "status": "too_vague", "message": "...", "examples": ["..."] }
 { "status": "not_found", "message": "..." }
 { "status": "out_of_scope", "message": "..." }`,
@@ -103,15 +126,17 @@ Return ONE of:
   }
 }
 
-/** Resolve search hit to vision payload with strict INCI lookup. */
+/** Resolve search hit to vision payload with INCI lookup (supports fuzzy search queries). */
 export async function searchResultToVision(
   openai: OpenAI,
-  found: Extract<ProductSearchResolveResult, { status: 'found' }>
+  found: Extract<ProductSearchResolveResult, { status: 'found' }>,
+  searchQuery?: string
 ): Promise<VisionExtractionResult | null> {
   const researched = await resolveProductIngredients(openai, {
     product_name: found.product_name,
     brand: found.brand,
     product_type: found.product_type,
+    search_query: searchQuery,
   });
 
   if (!researched) return null;

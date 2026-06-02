@@ -21,6 +21,12 @@ export interface HealthierAlternative {
   image_url?: string | null;
 }
 
+export interface SearchMatchInfo {
+  query: string;
+  match_type: 'exact' | 'best_match';
+  note?: string;
+}
+
 export interface AnalysisResult {
   product_name: string;
   product_type: string;
@@ -32,6 +38,8 @@ export interface AnalysisResult {
   healthier_alternative?: HealthierAlternative | null;
   /** True when the payload was served from `SkincareProductCatalog` (no scoring API calls). */
   from_catalog_cache?: boolean;
+  /** Present when the analysis came from name search with a fuzzy match. */
+  search_match?: SearchMatchInfo;
 }
 
 export interface AnalysisError {

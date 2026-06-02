@@ -145,7 +145,7 @@ export default function Home() {
         'Neutrogena Hydro Boost Water Gel',
       ]);
       setError(
-        'Search is too broad. Include brand and product name (e.g. "Cetaphil Gentle Skin Cleanser").'
+        'Search is too broad. Try a brand plus product type (e.g. "Cetaphil cleanser" or "Mamaearth shampoo").'
       );
       return;
     }
@@ -316,13 +316,13 @@ export default function Home() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !isAnalyzing) void handleSearch();
                 }}
-                placeholder="e.g. Cetaphil Gentle Skin Cleanser"
+                placeholder="e.g. Cetaphil cleanser, Mamaearth shampoo"
                 className="w-full px-4 py-3 rounded-xl text-sm border outline-none focus:ring-2"
                 style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                 disabled={isAnalyzing}
               />
               <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                Use brand + product line. Scores assume regular (non-sensitive) adult skin.
+                Partial names are fine — we pick the closest real product. Scores assume regular (non-sensitive) adult skin.
               </p>
             </div>
           ) : selectedImage ? (

@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           error: 'Search too broad',
           code: 'too_vague',
           details:
-            'Please include the brand and specific product name (e.g. "Cetaphil Gentle Skin Cleanser", not just "cleanser" or "Cetaphil").',
+            'Add a brand or product line (e.g. "Cetaphil cleanser" or "Mamaearth onion shampoo", not just "cleanser").',
           examples: [
             'Cetaphil Gentle Skin Cleanser',
             'CeraVe Hydrating Facial Cleanser',
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const visionData = await searchResultToVision(openai, resolved);
+    const visionData = await searchResultToVision(openai, resolved, body.query);
     if (!visionData) {
       return NextResponse.json(
         {
@@ -162,7 +162,20 @@ export async function POST(request: NextRequest) {
       await incrementVisitorScanCount();
     }
 
-    return NextResponse.json(analysisResult, { status: 200, headers });
+    const payload: AnalysisResult = {
+      ...analysisResult,
+      ...(resolved.match_type === 'best_match' || resolved.match_note
+        ? {
+            search_match: {
+              query: body.query,
+              match_type: resolved.match_type ?? 'best_match',
+              note: resolved.match_note,
+            },
+          }
+        : {}),
+    };
+
+    return NextResponse.json(payload, { status: 200, headers });
   } catch (error) {
     console.error('Search analysis error:', error);
     if (error instanceof Error) {

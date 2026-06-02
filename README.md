@@ -164,7 +164,7 @@ Edit `lib/openai.ts`:
 ```typescript
 export const VISION_MODEL = 'gpt-5.4-mini';
 export const TEXT_MODEL = 'gpt-5.4-mini';
-export const INGREDIENT_MODEL = 'gpt-5.4-mini';
+export const INGREDIENT_MODEL = 'gpt-5.4'; // full model for complete INCI extraction
 export const METHODOLOGY_DIGEST_MODEL = 'gpt-5.4-nano'; // see lib/openai.ts
 ```
 

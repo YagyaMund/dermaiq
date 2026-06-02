@@ -31,7 +31,7 @@ export type ResolvedIngredients = {
 };
 
 /**
- * Resolve INCI for an exact product SKU via GPT (gpt-5.4-mini), with optional label list as primary source.
+ * Resolve INCI for a product SKU via GPT (gpt-5.4), with optional label list as primary source.
  */
 export async function resolveProductIngredients(
   openai: OpenAI,
@@ -40,6 +40,8 @@ export async function resolveProductIngredients(
     brand?: string;
     product_type?: string;
     label_ingredients?: string[];
+    /** Original user search text when the SKU was fuzzy-matched. */
+    search_query?: string;
   }
 ): Promise<ResolvedIngredients | null> {
   const productTypeHint = params.product_type ?? 'moisturizer';
@@ -61,7 +63,7 @@ export async function resolveProductIngredients(
       },
     ],
     response_format: { type: 'json_object' },
-    ...chatCompletionLimits(INGREDIENT_MODEL, 3000),
+    ...chatCompletionLimits(INGREDIENT_MODEL, 5000),
   });
 
   const text = response.choices[0]?.message?.content;
