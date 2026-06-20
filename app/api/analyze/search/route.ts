@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
     const analysisResult = await runCatalogAnalysis(openai, visionData, {
       source: 'name_search',
       brand: resolved.brand,
+      searchQuery: body.query,
     });
 
     const headers = new Headers();

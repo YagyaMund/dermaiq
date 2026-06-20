@@ -209,7 +209,9 @@ export default function ResultsDisplay({ result, localImageUrl }: ResultsDisplay
   const scorePercent = Math.min(100, Math.max(0, score));
 
   const searchMatch = result.search_match;
-  const displayImage = resolveDisplayImageUrl(localImageUrl, result.image_url);
+  const displayImage = searchMatch
+    ? resolveDisplayImageUrl(null, result.image_url)
+    : resolveDisplayImageUrl(localImageUrl, result.image_url);
   const brandGuess = result.product_name.split(/\s+/)[0] ?? '';
 
   return (
