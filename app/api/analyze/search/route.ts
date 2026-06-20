@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
 
     const analysisResult = await runCatalogAnalysis(openai, visionData, {
       source: 'name_search',
+      brand: resolved.brand,
     });
 
     const headers = new Headers();
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: session.user.id,
             productName: analysisResult.product_name,
-            imageUrl: null,
+            imageUrl: analysisResult.image_url ?? null,
             qualityScore: analysisResult.score,
             safetyScore: analysisResult.score,
             organicType: 'N/A',

@@ -12,3 +12,12 @@ export function sanitizeProductImageUrl(url: string | null | undefined): string 
     return null;
   }
 }
+
+/** Prefer local scan data URL, else sanitized remote HTTPS. */
+export function resolveDisplayImageUrl(
+  localUrl?: string | null,
+  remoteUrl?: string | null
+): string | null {
+  if (localUrl?.trim().startsWith('data:image/')) return localUrl.trim();
+  return sanitizeProductImageUrl(remoteUrl);
+}

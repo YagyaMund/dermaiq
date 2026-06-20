@@ -36,6 +36,8 @@ export interface AnalysisResult {
   negative_ingredients: IngredientCategory[];
   verdict: string;
   healthier_alternative?: HealthierAlternative | null;
+  /** Pack photo URL when resolved (e.g. Open Beauty Facts). */
+  image_url?: string | null;
   /** True when the payload was served from `SkincareProductCatalog` (no scoring API calls). */
   from_catalog_cache?: boolean;
   /** Present when the analysis came from name search with a fuzzy match. */

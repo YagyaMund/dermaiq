@@ -506,7 +506,7 @@ export default function Home() {
 
         {result && (
           <div>
-            <ResultsDisplay result={result} />
+            <ResultsDisplay result={result} localImageUrl={selectedImage} />
             <div className="text-center mt-4 sm:mt-6">
               <button
                 onClick={handleReset}

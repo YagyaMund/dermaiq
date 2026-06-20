@@ -10,17 +10,36 @@ import { resolveCachedAnalysis } from '@/lib/catalog/resolve-cache';
 import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
 import { resolveHealthierAlternativeScore } from '@/lib/analysis/resolve-healthier-alternative';
 import { ingredientsMatchForCache } from '@/lib/analysis/normalize-inci';
+import { resolveProductImageUrl } from '@/lib/catalog/resolve-product-image';
 import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
 
 type CatalogSource = 'user_scan' | 'name_search';
 
 export function normalizeAnalysisResult(result: AnalysisResult): AnalysisResult {
-  if (!result.healthier_alternative?.image_url) return result;
-  const safe = sanitizeProductImageUrl(result.healthier_alternative.image_url);
-  return {
-    ...result,
-    healthier_alternative: { ...result.healthier_alternative, image_url: safe },
-  };
+  let next = result;
+  if (result.healthier_alternative?.image_url) {
+    const safe = sanitizeProductImageUrl(result.healthier_alternative.image_url);
+    next = {
+      ...next,
+      healthier_alternative: { ...result.healthier_alternative, image_url: safe },
+    };
+  }
+  if (result.image_url) {
+    next = { ...next, image_url: sanitizeProductImageUrl(result.image_url) };
+  }
+  return next;
+}
+
+async function attachProductImage(
+  result: AnalysisResult,
+  brand?: string
+): Promise<AnalysisResult> {
+  if (result.image_url) return result;
+  const image_url = await resolveProductImageUrl({
+    product_name: result.product_name,
+    brand,
+  });
+  return image_url ? { ...result, image_url } : result;
 }
 
 export async function applyCatalogScoredAlternative(
@@ -38,7 +57,7 @@ export async function applyCatalogScoredAlternative(
 export async function runCatalogAnalysis(
   openai: OpenAI,
   visionData: VisionExtractionResult,
-  options: { source: CatalogSource; imageHash?: string }
+  options: { source: CatalogSource; imageHash?: string; brand?: string }
 ): Promise<AnalysisResult> {
   const lookupKey = makeCatalogLookupKey(visionData.product_name);
   let cached = await resolveCachedAnalysis(visionData.product_name);
@@ -81,5 +100,6 @@ export async function runCatalogAnalysis(
     });
   }
 
-  return applyCatalogScoredAlternative(openai, analysisResult);
+  const withAlternative = await applyCatalogScoredAlternative(openai, analysisResult);
+  return normalizeAnalysisResult(await attachProductImage(withAlternative, options.brand));
 }

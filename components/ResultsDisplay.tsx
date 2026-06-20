@@ -9,29 +9,34 @@ import {
   getScoreLabel,
   SCORE_SCALE_SEGMENTS,
 } from '@/lib/score-display';
-import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
+import { resolveDisplayImageUrl, sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
 
-function AltProductImage({
+function ProductThumbnail({
   productName,
   brand,
   imageUrl,
+  size = 88,
 }: {
   productName: string;
-  brand: string;
+  brand?: string;
   imageUrl?: string | null;
+  size?: number;
 }) {
   const [failed, setFailed] = useState(false);
-  const safeUrl = sanitizeProductImageUrl(imageUrl);
+  const safeUrl = imageUrl?.startsWith('data:image/')
+    ? imageUrl
+    : sanitizeProductImageUrl(imageUrl);
   const showImage = safeUrl && !failed;
 
   return (
     <div
-      className="flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden"
+      className="flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden border"
       style={{
-        width: 88,
-        height: 88,
+        width: size,
+        height: size,
+        minWidth: size,
         backgroundColor: '#F5F1EB',
-        minWidth: 88,
+        borderColor: 'var(--border)',
       }}
     >
       {showImage ? (
@@ -39,7 +44,7 @@ function AltProductImage({
         <img
           src={safeUrl}
           alt={productName}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain p-1"
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
         />
@@ -53,6 +58,25 @@ function AltProductImage({
         </span>
       )}
     </div>
+  );
+}
+
+function AltProductImage({
+  productName,
+  brand,
+  imageUrl,
+}: {
+  productName: string;
+  brand: string;
+  imageUrl?: string | null;
+}) {
+  return (
+    <ProductThumbnail
+      productName={productName}
+      brand={brand}
+      imageUrl={imageUrl}
+      size={88}
+    />
   );
 }
 
@@ -91,6 +115,8 @@ function ScoreRing({ score }: { score: number }) {
 
 interface ResultsDisplayProps {
   result: AnalysisResult;
+  /** User-uploaded scan photo (data URL) — shown when available. */
+  localImageUrl?: string | null;
 }
 
 // ─── Risk badge ───────────────────────────────────────────────────────────────
@@ -177,12 +203,14 @@ const SectionHeader = ({
 );
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function ResultsDisplay({ result }: ResultsDisplayProps) {
+export default function ResultsDisplay({ result, localImageUrl }: ResultsDisplayProps) {
   const [showIngredients, setShowIngredients] = useState(false);
   const score = result.score;
   const scorePercent = Math.min(100, Math.max(0, score));
 
   const searchMatch = result.search_match;
+  const displayImage = resolveDisplayImageUrl(localImageUrl, result.image_url);
+  const brandGuess = result.product_name.split(/\s+/)[0] ?? '';
 
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -211,6 +239,12 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
       <Card className="p-5 sm:p-6">
         {/* Product name + score circle */}
         <div className="flex items-start justify-between gap-4 mb-5">
+          <ProductThumbnail
+            productName={result.product_name}
+            brand={brandGuess}
+            imageUrl={displayImage}
+            size={96}
+          />
           <div className="flex-1 min-w-0">
             <h2
               className="text-xl sm:text-2xl font-bold tracking-tight leading-snug"

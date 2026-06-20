@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: session.user.id,
             productName: analysisResult.product_name,
-            imageUrl: null,
+            imageUrl: analysisResult.image_url ?? null,
             qualityScore: analysisResult.score,
             safetyScore: analysisResult.score,
             organicType: 'N/A',
