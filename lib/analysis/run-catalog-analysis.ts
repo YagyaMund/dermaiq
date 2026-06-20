@@ -10,7 +10,7 @@ import { resolveCachedAnalysis } from '@/lib/catalog/resolve-cache';
 import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
 import { resolveHealthierAlternativeScore } from '@/lib/analysis/resolve-healthier-alternative';
 import { ingredientsMatchForCache } from '@/lib/analysis/normalize-inci';
-import { resolveProductImageFromOpenAI } from '@/lib/catalog/resolve-product-image-openai';
+import { resolveProductImageFromOpenAI, type ResolvedSkuForImage } from '@/lib/catalog/resolve-product-image-openai';
 import { resolveProductImageUrl } from '@/lib/catalog/resolve-product-image';
 import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
 
@@ -34,16 +34,26 @@ export function normalizeAnalysisResult(result: AnalysisResult): AnalysisResult 
 async function attachProductImage(
   openai: OpenAI,
   result: AnalysisResult,
-  options: { brand?: string; source: CatalogSource; searchQuery?: string }
+  options: {
+    brand?: string;
+    source: CatalogSource;
+    resolvedSku?: ResolvedSkuForImage;
+    prefetchedImageUrl?: string | null;
+  }
 ): Promise<AnalysisResult> {
   if (result.image_url) return result;
 
+  if (options.prefetchedImageUrl) {
+    return { ...result, image_url: options.prefetchedImageUrl };
+  }
+
   if (options.source === 'name_search') {
-    const image_url = await resolveProductImageFromOpenAI(openai, {
+    const sku: ResolvedSkuForImage = options.resolvedSku ?? {
       product_name: result.product_name,
-      brand: options.brand,
-      search_query: options.searchQuery,
-    });
+      brand: options.brand ?? '',
+      product_type: result.product_type,
+    };
+    const image_url = await resolveProductImageFromOpenAI(openai, sku);
     if (image_url) return { ...result, image_url };
   }
 
@@ -69,7 +79,13 @@ export async function applyCatalogScoredAlternative(
 export async function runCatalogAnalysis(
   openai: OpenAI,
   visionData: VisionExtractionResult,
-  options: { source: CatalogSource; imageHash?: string; brand?: string; searchQuery?: string }
+  options: {
+    source: CatalogSource;
+    imageHash?: string;
+    brand?: string;
+    resolvedSku?: ResolvedSkuForImage;
+    prefetchedImageUrl?: string | null;
+  }
 ): Promise<AnalysisResult> {
   const lookupKey = makeCatalogLookupKey(visionData.product_name);
   let cached = await resolveCachedAnalysis(visionData.product_name);
@@ -117,7 +133,8 @@ export async function runCatalogAnalysis(
     await attachProductImage(openai, withAlternative, {
       brand: options.brand,
       source: options.source,
-      searchQuery: options.searchQuery,
+      resolvedSku: options.resolvedSku,
+      prefetchedImageUrl: options.prefetchedImageUrl,
     })
   );
 }

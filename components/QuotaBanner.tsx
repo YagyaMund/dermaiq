@@ -40,7 +40,7 @@ export default function QuotaBanner({
   }
 
   return (
-    <p className="text-xs mt-2 px-2" style={{ color: 'var(--text-secondary)' }}>
+    <p className="text-xs mt-2 mb-5 px-2" style={{ color: 'var(--text-secondary)' }}>
       Without logging in, you can scan up to 3 products.{' '}
       <span className="font-medium" style={{ color: 'var(--primary)' }}>
         {quota.remaining} free scan{quota.remaining === 1 ? '' : 's'} left.

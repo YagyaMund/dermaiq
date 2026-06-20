@@ -9,6 +9,7 @@ import {
   resolveProductSearch,
   searchResultToVision,
 } from '@/lib/analysis/resolve-product-search';
+import { resolveProductImageFromOpenAI } from '@/lib/catalog/resolve-product-image-openai';
 import { runCatalogAnalysis } from '@/lib/analysis/run-catalog-analysis';
 import {
   enforceAnalyzeSearchRequest,
@@ -104,7 +105,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const visionData = await searchResultToVision(openai, resolved, body.query);
+    const resolvedSku = {
+      product_name: resolved.product_name,
+      brand: resolved.brand,
+      product_type: resolved.product_type,
+      match_note: resolved.match_note,
+    };
+
+    const [visionData, prefetchedImageUrl] = await Promise.all([
+      searchResultToVision(openai, resolved, body.query),
+      resolveProductImageFromOpenAI(openai, resolvedSku),
+    ]);
+
     if (!visionData) {
       return NextResponse.json(
         {
@@ -120,7 +132,8 @@ export async function POST(request: NextRequest) {
     const analysisResult = await runCatalogAnalysis(openai, visionData, {
       source: 'name_search',
       brand: resolved.brand,
-      searchQuery: body.query,
+      resolvedSku,
+      prefetchedImageUrl,
     });
 
     const headers = new Headers();
@@ -166,6 +179,8 @@ export async function POST(request: NextRequest) {
 
     const payload: AnalysisResult = {
       ...analysisResult,
+      product_name: resolved.product_name,
+      product_type: resolved.product_type,
       ...(resolved.match_type === 'best_match' || resolved.match_note
         ? {
             search_match: {

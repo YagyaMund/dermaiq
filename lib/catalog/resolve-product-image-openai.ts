@@ -10,12 +10,62 @@ type ImageSearchResult = {
   caption?: string;
 };
 
+export type ResolvedSkuForImage = {
+  product_name: string;
+  brand: string;
+  product_type: string;
+  match_note?: string;
+};
+
+const GENERIC_PRODUCT_WORDS = new Set([
+  'skin',
+  'face',
+  'body',
+  'hair',
+  'care',
+  'cleanser',
+  'wash',
+  'shampoo',
+  'conditioner',
+  'moisturizer',
+  'moisturiser',
+  'cream',
+  'lotion',
+  'serum',
+  'sunscreen',
+  'toner',
+  'gel',
+  'oil',
+  'mask',
+  'spf',
+  'for',
+  'with',
+  'the',
+  'and',
+  'daily',
+  'gentle',
+  'natural',
+  'organic',
+  'professional',
+  'india',
+  'ml',
+  'gm',
+  'gms',
+]);
+
 function tokenize(text: string): Set<string> {
   return new Set(
     text
       .toLowerCase()
       .split(/[^a-z0-9]+/)
       .filter((t) => t.length > 2)
+  );
+}
+
+function distinctiveVariantTokens(productName: string, brand: string): string[] {
+  const brandTokens = tokenize(brand);
+  return [...tokenize(productName)].filter(
+    (t) => !GENERIC_PRODUCT_WORDS.has(t) && !brandTokens.has(t)
   );
 }
 
@@ -30,21 +80,42 @@ function nameOverlapScore(query: string, candidate: string): number {
   return hit / q.size;
 }
 
+function variantTokenCoverage(tokens: string[], text: string): number {
+  if (tokens.length === 0) return 1;
+  const hay = text.toLowerCase();
+  const hit = tokens.filter((t) => hay.includes(t)).length;
+  return hit / tokens.length;
+}
+
 const RETAILER_HINTS =
   /amazon|nykaa|flipkart|sephora|ulta|target|walmart|chemistwarehouse|boots|lookfantastic|maccaron|purplle|1mg|myntra|bigbasket/i;
 
-function scoreImageResult(result: ImageSearchResult, matchQuery: string): number {
+function scoreImageResult(
+  result: ImageSearchResult,
+  matchQuery: string,
+  variantTokens: string[]
+): number {
   const text = [result.caption, result.source_website_url].filter(Boolean).join(' ');
+  const coverage = variantTokenCoverage(variantTokens, text);
+
+  if (variantTokens.length > 0 && coverage < 0.65) return 0;
+
   let score = nameOverlapScore(matchQuery, text);
+  score += coverage * 0.35;
+
   if (result.source_website_url && RETAILER_HINTS.test(result.source_website_url)) {
-    score += 0.15;
+    score += 0.1;
   }
-  if (result.source_website_url && /pinterest|reddit|youtube|tiktok|instagram|facebook/i.test(result.source_website_url)) {
-    score -= 0.25;
+  if (
+    result.source_website_url &&
+    /pinterest|reddit|youtube|tiktok|instagram|facebook/i.test(result.source_website_url)
+  ) {
+    score -= 0.3;
   }
   if (result.caption && /\blogo\b|\bbanner\b|\bad\b/i.test(result.caption)) {
-    score -= 0.15;
+    score -= 0.2;
   }
+
   return score;
 }
 
@@ -69,21 +140,33 @@ function extractImageResults(output: unknown[]): ImageSearchResult[] {
   return results;
 }
 
+function buildImageSearchPrompt(sku: ResolvedSkuForImage): string {
+  const exactName = [sku.brand, sku.product_name].filter(Boolean).join(' ').trim();
+  const note = sku.match_note ? ` Context: ${sku.match_note}.` : '';
+
+  return `Find the official retail pack photo for this EXACT skincare SKU only:
+Brand: ${sku.brand}
+Product: ${sku.product_name}
+Category: ${sku.product_type}${note}
+
+Search using the full quoted product name: "${exactName}".
+
+Requirements:
+- The packaging photo MUST be this exact SKU (same variant/line keywords, not a sibling product).
+- Reject other variants from the same brand (e.g. if the product is Onion Shampoo, do NOT return Argan or Tea Tree).
+- Prefer Nykaa, Amazon India, Flipkart, or the brand's official product page.
+- Product pack shot only — no logos, ads, or ingredient-only images.`;
+}
+
 /** Resolve a product pack photo via OpenAI web image search (uses existing OPENAI_API_KEY). */
 export async function resolveProductImageFromOpenAI(
   openai: OpenAI,
-  params: {
-    product_name: string;
-    brand?: string;
-    search_query?: string;
-  }
+  sku: ResolvedSkuForImage
 ): Promise<string | null> {
-  const identity = [params.brand, params.product_name].filter(Boolean).join(' ').trim();
-  const hint = params.search_query?.trim();
-  if (identity.length < 3) return null;
+  const exactName = [sku.brand, sku.product_name].filter(Boolean).join(' ').trim();
+  if (exactName.length < 3) return null;
 
-  const searchHint =
-    hint && hint.toLowerCase() !== identity.toLowerCase() ? ` User searched: "${hint}".` : '';
+  const variantTokens = distinctiveVariantTokens(sku.product_name, sku.brand);
 
   try {
     const response = await openai.responses.create({
@@ -93,14 +176,14 @@ export async function resolveProductImageFromOpenAI(
         {
           type: 'web_search',
           search_content_types: ['image', 'text'],
-          image_settings: { max_results: 6, caption: true },
-          search_context_size: 'low',
+          image_settings: { max_results: 10, caption: true },
+          search_context_size: 'medium',
           user_location: { type: 'approximate', country: 'IN' },
         },
       ],
       tool_choice: { type: 'web_search' },
       include: ['web_search_call.results'],
-      input: `Find official retail pack photos for this skincare product: ${identity}.${searchHint} Prefer product listing images from Nykaa, Amazon, Flipkart, or the brand's site. Packaging photo only, not logos or ads.`,
+      input: buildImageSearchPrompt(sku),
     } as unknown as Parameters<OpenAI['responses']['create']>[0]);
 
     const body = response as OpenAI.Responses.Response;
@@ -111,16 +194,16 @@ export async function resolveProductImageFromOpenAI(
     for (const result of imageResults) {
       const image = pickImageUrl(result);
       if (!image) continue;
-      const score = scoreImageResult(result, identity);
+      const score = scoreImageResult(result, exactName, variantTokens);
+      if (score <= 0) continue;
       if (!best || score > best.score) {
         best = { score, image };
       }
     }
 
-    if (best && best.score >= 0.15) return best.image;
+    if (best && best.score >= 0.35) return best.image;
 
-    const first = imageResults.map(pickImageUrl).find(Boolean);
-    return first ?? null;
+    return null;
   } catch (error) {
     console.warn('OpenAI product image lookup failed:', error);
     return null;
