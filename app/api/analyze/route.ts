@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         {
           error: 'Could not analyze this product from the photo',
           details:
-            'We could not identify the product or find its ingredient list. Try a clearer photo showing the brand and product name on the front of the pack, or search by exact product name instead.',
+            'We could not identify the product or find its ingredient list. Try a photo with the brand and product name visible on the front, include the ingredients panel if possible, or use Search by product name instead.',
         },
         { status: 422 }
       );
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!isPlausibleInciList(visionData.ingredients, 5)) {
+    if (!isPlausibleInciList(visionData.ingredients)) {
       return NextResponse.json(
         {
           error: 'Could not find a complete ingredient list',

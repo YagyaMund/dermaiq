@@ -76,8 +76,8 @@ export async function resolveProductIngredients(
     }
 
     const gptIngredients = normalizeInciList(parsed.ingredients);
-    if (!isPlausibleInciList(gptIngredients, 5)) {
-      if (!isPlausibleInciList(labelNorm, 5)) return null;
+    if (!isPlausibleInciList(gptIngredients)) {
+      if (!isPlausibleInciList(labelNorm)) return null;
     }
 
     const product_type =
@@ -87,7 +87,7 @@ export async function resolveProductIngredients(
           ? (productTypeHint as ResolvedIngredients['product_type'])
           : 'moisturizer';
 
-    if (isPlausibleInciList(labelNorm, 5) && isPlausibleInciList(gptIngredients, 5)) {
+    if (isPlausibleInciList(labelNorm) && isPlausibleInciList(gptIngredients)) {
       const sim = ingredientsSimilarity(labelNorm, gptIngredients);
       if (sim >= 0.45 && labelNorm.length >= gptIngredients.length * 0.7) {
         return {
@@ -107,7 +107,7 @@ export async function resolveProductIngredients(
       };
     }
 
-    if (isPlausibleInciList(labelNorm, 5)) {
+    if (isPlausibleInciList(labelNorm)) {
       return {
         product_name: params.product_name,
         product_type,
@@ -117,7 +117,7 @@ export async function resolveProductIngredients(
       };
     }
 
-    if (!isPlausibleInciList(gptIngredients, 5)) return null;
+    if (!isPlausibleInciList(gptIngredients)) return null;
 
     return {
       product_name: parsed.product_name || params.product_name,

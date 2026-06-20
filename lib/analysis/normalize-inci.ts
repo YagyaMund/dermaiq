@@ -27,12 +27,12 @@ export function normalizeInciList(ingredients: string[]): string[] {
   return out;
 }
 
-export function isPlausibleInciList(ingredients: string[], minCount = 5): boolean {
+export function isPlausibleInciList(ingredients: string[], minCount = 3): boolean {
   const normalized = normalizeInciList(ingredients);
   if (normalized.length < minCount) return false;
 
   const nonPlaceholder = normalized.filter((n) => !PLACEHOLDER_ONLY.test(n));
-  return nonPlaceholder.length >= Math.min(minCount, 3);
+  return nonPlaceholder.length >= Math.min(minCount, 2);
 }
 
 function tokenSet(ingredients: string[]): Set<string> {

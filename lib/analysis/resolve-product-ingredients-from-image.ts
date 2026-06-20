@@ -71,7 +71,7 @@ export async function resolveProductIngredientsFromImage(
     }
 
     const ingredients = normalizeInciList(parsed.ingredients);
-    if (!isPlausibleInciList(ingredients, 5)) return null;
+    if (!isPlausibleInciList(ingredients)) return null;
 
     return {
       product_name: parsed.product_name,

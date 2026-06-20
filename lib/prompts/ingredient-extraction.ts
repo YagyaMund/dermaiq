@@ -8,10 +8,9 @@ COMPLETE INCI LIST (mandatory):
 - Include easy-to-miss entries: preservatives (e.g. Phenoxyethanol, Sodium Benzoate), emulsifiers, surfactants,
   thickeners (Carbomer, Xanthan Gum), chelators (EDTA), pH adjusters (Citric Acid), silicones, colorants (CI ####),
   sunscreen filters when relevant, and Parfum/Aroma when present.
-- Typical retail skincare/hair products: expect roughly 10–35 INCI names when the formula is known.
-- Do NOT invent ingredients. Do NOT merge multiple INCI names into one string.
-- If the INCI panel is visible in a photo: transcribe it exactly first; only then align spelling to standard INCI.
-- If uncertain about this exact SKU or list would be incomplete: ingredients [] and explain in rejected_reason.
+- Typical retail skincare/hair products: expect roughly 8–35 INCI names when the formula is known.
+- Prefer returning a complete best-effort INCI list for an identified product rather than an empty list.
+- Only return ingredients [] with rejected_reason when the product itself cannot be identified or the photo has zero readable text.
 `.trim();
 
 export const INCI_LABEL_READ_SYSTEM = `You are an expert at reading cosmetic product labels and INCI lists from photos.
@@ -27,9 +26,9 @@ Your job is to extract a COMPLETE, accurate INCI ingredient list — as if caref
 WORKFLOW:
 1. Read all visible packaging text (front, back, sides): brand, product line, variant, size, claims.
 2. If an ingredients / INCI panel is visible: transcribe the full list in order (highest priority — do not skip lines).
-3. If only the front pack is visible: identify the exact retail SKU, then return the full published INCI list for that SKU
-   (India and global market formulas; prefer the most common current formulation).
-4. Verify the list is complete before responding — count should match a full label, not a shortened marketing teaser.
+3. If only the front pack is visible: identify the exact retail SKU from branding, then return the full published INCI list for that SKU
+   (India and global market; common current formulation for that product line).
+4. Never return an empty ingredient list if you can read the brand/product name — look up the standard formula for that SKU.
 
 ${INCI_EXTRACTION_RULES}
 
@@ -71,7 +70,7 @@ Return STRICTLY:
 confidence:
 - high: full INCI from label OR high-confidence complete formula for identified SKU
 - medium: identified SKU but minor uncertainty on a few tail ingredients
-- low: cannot provide a reliable complete list — use ingredients [] and rejected_reason
+- low: cannot provide a reliable complete list — still return best-effort ingredients if product is identified; use rejected_reason only as last resort
 
 is_skincare: true for in-scope skin, scalp, or hair personal care; false for out-of-scope items.`;
 }
@@ -133,5 +132,5 @@ Return STRICTLY:
   "rejected_reason": null or string if you cannot provide a reliable complete list for this exact SKU
 }
 
-If you cannot provide a reliable COMPLETE INCI list for this exact SKU, set ingredients to [] and explain in rejected_reason.`;
+If you cannot provide a reliable COMPLETE INCI list for this exact SKU, still return the closest published formula you know (confidence "medium") rather than an empty list.`;
 }

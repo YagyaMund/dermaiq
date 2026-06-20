@@ -37,10 +37,10 @@ OUT OF SCOPE (product_type "not_skincare", is_skincare false) — only reject wh
 - Nail polish, perfume/EDP with no skin/hair care role, oral care, household cleaners, laundry, supplements, Rx medications, diapers, sanitary products, tools/devices without a scoreable formula.
 
 Your job:
-1. Identify the exact product (brand, line, variant, size if visible).
-2. Do NOT invent an INCI list in this step — ingredients may be filled by a dedicated label read or SKU research step.
-3. If you must include ingredients, only list what is clearly readable on the label in order; otherwise return [].
-4. Set confidence high/medium/low honestly.
+1. Identify the exact product (brand, line, variant, size if visible) — even from a partial or angled photo.
+2. Read any visible text on front, back, or sides. Indian brands (Mamaearth, Dot & Key, Minimalist, Cetaphil, etc.) and global brands are in scope.
+3. Do NOT invent an INCI list in this step — ingredients are filled by a dedicated label read or SKU research step.
+4. Set confidence high/medium/low honestly; use medium when brand is clear but variant is uncertain.
 
 You MUST use the exact JSON keys requested in the user message.`;
 
