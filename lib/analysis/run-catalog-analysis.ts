@@ -10,7 +10,7 @@ import { resolveCachedAnalysis } from '@/lib/catalog/resolve-cache';
 import { scoreSkincareFromVision } from '@/lib/analysis/score-from-vision';
 import { resolveHealthierAlternativeScore } from '@/lib/analysis/resolve-healthier-alternative';
 import { ingredientsMatchForCache } from '@/lib/analysis/normalize-inci';
-import { resolveProductImageFromGoogle } from '@/lib/catalog/resolve-product-image-google';
+import { resolveProductImageFromOpenAI } from '@/lib/catalog/resolve-product-image-openai';
 import { resolveProductImageUrl } from '@/lib/catalog/resolve-product-image';
 import { sanitizeProductImageUrl } from '@/lib/utils/product-image-url';
 
@@ -32,13 +32,14 @@ export function normalizeAnalysisResult(result: AnalysisResult): AnalysisResult 
 }
 
 async function attachProductImage(
+  openai: OpenAI,
   result: AnalysisResult,
   options: { brand?: string; source: CatalogSource; searchQuery?: string }
 ): Promise<AnalysisResult> {
   if (result.image_url) return result;
 
   if (options.source === 'name_search') {
-    const image_url = await resolveProductImageFromGoogle({
+    const image_url = await resolveProductImageFromOpenAI(openai, {
       product_name: result.product_name,
       brand: options.brand,
       search_query: options.searchQuery,
@@ -113,7 +114,7 @@ export async function runCatalogAnalysis(
 
   const withAlternative = await applyCatalogScoredAlternative(openai, analysisResult);
   return normalizeAnalysisResult(
-    await attachProductImage(withAlternative, {
+    await attachProductImage(openai, withAlternative, {
       brand: options.brand,
       source: options.source,
       searchQuery: options.searchQuery,
