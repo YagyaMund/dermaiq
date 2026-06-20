@@ -66,23 +66,57 @@ export default function Home() {
   };
 
   const fetchAnalyzeToken = async () => {
-    const tokenRes = await fetch('/api/analyze/token', { cache: 'no-store' });
-    if (!tokenRes.ok) {
-      setError('Could not start analysis. Please refresh the page.');
+    try {
+      const tokenRes = await fetch('/api/analyze/token', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+
+      let payload: {
+        token?: string;
+        tokenHeader?: string;
+        requiresLogin?: boolean;
+        error?: string;
+        details?: string;
+      } = {};
+
+      try {
+        payload = await tokenRes.json();
+      } catch {
+        payload = {};
+      }
+
+      if (!tokenRes.ok) {
+        setError(
+          payload.details ||
+            payload.error ||
+            `Could not start analysis (HTTP ${tokenRes.status}). Please refresh the page.`
+        );
+        return null;
+      }
+
+      if (!payload.token || !payload.tokenHeader) {
+        setError('Could not start analysis. Please refresh the page.');
+        return null;
+      }
+
+      if (payload.requiresLogin && !session) {
+        setLoginRequired(true);
+        setError('You have used all 3 free scans. Log in to analyze more products.');
+        await refreshQuota();
+        return null;
+      }
+
+      return {
+        token: payload.token,
+        tokenHeader: payload.tokenHeader,
+        requiresLogin: payload.requiresLogin,
+      };
+    } catch (fetchError) {
+      console.error('Analyze token fetch failed:', fetchError);
+      setError('Could not reach the server. Check your connection and refresh the page.');
       return null;
     }
-    const tokenData = (await tokenRes.json()) as {
-      token: string;
-      tokenHeader: string;
-      requiresLogin?: boolean;
-    };
-    if (tokenData.requiresLogin && !session) {
-      setLoginRequired(true);
-      setError('You have used all 3 free scans. Log in to analyze more products.');
-      await refreshQuota();
-      return null;
-    }
-    return tokenData;
   };
 
   const handleAnalyze = async () => {

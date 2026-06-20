@@ -30,11 +30,23 @@ function decodeState(raw: string | undefined): VisitorState | null {
   return { visitorId, scanCount };
 }
 
+async function writeVisitorCookie(state: VisitorState): Promise<void> {
+  try {
+    const jar = await cookies();
+    jar.set(visitorCookieOptions(encodeState(state)));
+  } catch (error) {
+    console.warn('visitor cookie write failed:', error);
+  }
+}
+
 export async function getVisitorState(): Promise<VisitorState> {
   const jar = await cookies();
   const existing = decodeState(jar.get(VISITOR_COOKIE_NAME)?.value);
   if (existing) return existing;
-  return { visitorId: newVisitorId(), scanCount: 0 };
+
+  const state = { visitorId: newVisitorId(), scanCount: 0 };
+  await writeVisitorCookie(state);
+  return state;
 }
 
 export function visitorCookieOptions(value: string) {
@@ -50,8 +62,7 @@ export function visitorCookieOptions(value: string) {
 }
 
 export async function setVisitorState(state: VisitorState): Promise<void> {
-  const jar = await cookies();
-  jar.set(visitorCookieOptions(encodeState(state)));
+  await writeVisitorCookie(state);
 }
 
 export function anonRemaining(state: VisitorState): number {
