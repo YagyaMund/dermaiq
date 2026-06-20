@@ -23,6 +23,8 @@ export const TEXT_MODEL = 'gpt-5.4-mini';
 export const INGREDIENT_MODEL = 'gpt-5.4';
 /** Cheaper pass that reads full methodology before the main scoring call. */
 export const METHODOLOGY_DIGEST_MODEL = 'gpt-5.4-nano';
+/** Product name search → most relevant SKU resolution. */
+export const PRODUCT_SEARCH_MODEL = 'gpt-5.4-mini';
 
 /** GPT-5+ uses `max_completion_tokens`; earlier models use `max_tokens`. */
 export function chatCompletionLimits(

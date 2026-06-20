@@ -42,6 +42,8 @@ export async function resolveProductIngredients(
     label_ingredients?: string[];
     /** Original user search text when the SKU was fuzzy-matched. */
     search_query?: string;
+    /** Resolver note on why this SKU matches the search. */
+    match_note?: string;
   }
 ): Promise<ResolvedIngredients | null> {
   const productTypeHint = params.product_type ?? 'moisturizer';

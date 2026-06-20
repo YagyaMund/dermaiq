@@ -356,7 +356,7 @@ export default function Home() {
                 disabled={isAnalyzing}
               />
               <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                Partial names are fine — we pick the closest real product. Scores assume regular (non-sensitive) adult skin.
+                Partial names are fine — we find the most relevant real product for your search. Scores assume regular (non-sensitive) adult skin.
               </p>
             </div>
           ) : selectedImage ? (

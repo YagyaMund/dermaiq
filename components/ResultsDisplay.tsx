@@ -188,7 +188,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
     <div className="space-y-4 animate-fadeIn">
       <AiDisclaimer className="px-1" />
 
-      {searchMatch?.match_type === 'best_match' && (
+      {searchMatch && (
         <div
           className="rounded-xl px-4 py-3 text-xs sm:text-sm leading-relaxed"
           style={{
@@ -199,7 +199,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
         >
           <p>
             <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Showing closest match
+              Most relevant match
             </span>
             {' '}for &ldquo;{searchMatch.query}&rdquo;
             {searchMatch.note ? ` — ${searchMatch.note}` : ''}.

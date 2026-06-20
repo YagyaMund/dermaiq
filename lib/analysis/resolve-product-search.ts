@@ -1,8 +1,12 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
-import { METHODOLOGY_DIGEST_MODEL, chatCompletionLimits } from '@/lib/openai';
+import { PRODUCT_SEARCH_MODEL, chatCompletionLimits } from '@/lib/openai';
 import type { VisionExtractionResult } from '@/types';
 import { SKINCARE_PRODUCT_TYPES } from '@/lib/prompts/vision-skincare';
+import {
+  PRODUCT_SEARCH_SYSTEM,
+  buildProductSearchUserPrompt,
+} from '@/lib/prompts/product-search';
 import { resolveProductIngredients } from '@/lib/analysis/resolve-product-ingredients';
 
 const SkincareProductTypeZ = z.enum(SKINCARE_PRODUCT_TYPES);
@@ -63,49 +67,16 @@ export async function resolveProductSearch(
   query: string
 ): Promise<ProductSearchResolveResult> {
   const trimmed = query.trim();
-  const types = SKINCARE_PRODUCT_TYPES.filter((t) => t !== 'not_skincare').join(' | ');
 
   const response = await openai.chat.completions.create({
-    model: METHODOLOGY_DIGEST_MODEL,
-    temperature: 0.1,
+    model: PRODUCT_SEARCH_MODEL,
+    temperature: 0.15,
     messages: [
-      {
-        role: 'system',
-        content: `You resolve skincare / hair / body care product searches into ONE real retail SKU sold in India or globally.
-
-Prefer returning status "found" with the best relevant match rather than "not_found" when the user's intent is clear.
-
-Match types:
-- match_type "exact": query names a specific SKU (or trivial spelling variant).
-- match_type "best_match": query is partial, informal, or category-level but clearly points to one flagship / best-selling SKU (e.g. "cetaphil cleanser" → Cetaphil Gentle Skin Cleanser; "mamaearth shampoo" → their most popular shampoo line).
-
-Use "too_vague" ONLY when many unrelated products fit equally (e.g. "moisturizer" with no brand).
-Use "not_found" ONLY when nothing in-scope is a reasonable match.
-Use "out_of_scope" for non personal-care items.
-
-Return JSON only. Do NOT include ingredients.`,
-      },
-      {
-        role: 'user',
-        content: `Search query: "${trimmed}"
-
-Rules:
-- status "found": pick ONE real product SKU. Include brand separately, match_type, and optional match_note (short, e.g. "Best match for your search").
-- status "too_vague": many unrelated products fit; include message and 2–3 example queries in "examples".
-- status "not_found": in-scope personal care but no reasonable product match.
-- status "out_of_scope": not skin/scalp/hair personal care.
-
-product_type must be one of: ${types}
-
-Return ONE of:
-{ "status": "found", "product_name": "...", "brand": "...", "product_type": "...", "confidence": "high"|"medium"|"low", "is_skincare": true, "match_type": "exact"|"best_match", "match_note": "optional" }
-{ "status": "too_vague", "message": "...", "examples": ["..."] }
-{ "status": "not_found", "message": "..." }
-{ "status": "out_of_scope", "message": "..." }`,
-      },
+      { role: 'system', content: PRODUCT_SEARCH_SYSTEM },
+      { role: 'user', content: buildProductSearchUserPrompt(trimmed) },
     ],
     response_format: { type: 'json_object' },
-    ...chatCompletionLimits(METHODOLOGY_DIGEST_MODEL, 800),
+    ...chatCompletionLimits(PRODUCT_SEARCH_MODEL, 900),
   });
 
   const text = response.choices[0]?.message?.content;
@@ -137,6 +108,7 @@ export async function searchResultToVision(
     brand: found.brand,
     product_type: found.product_type,
     search_query: searchQuery,
+    match_note: found.match_note,
   });
 
   if (!researched) return null;

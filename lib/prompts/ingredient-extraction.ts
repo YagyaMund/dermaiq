@@ -42,7 +42,7 @@ Treat this as meticulous data extraction: every ingredient that appears on the p
 
 ${INCI_EXTRACTION_RULES}
 
-When search_query differs from the resolved product name, the resolved SKU is the best match — return INCI for that SKU only.
+When search_query differs from the resolved product name, return INCI for the SKU that best matches the user's search intent — not a different variant or older reformulation unless certain.
 
 Return JSON only.`;
 
@@ -103,6 +103,7 @@ export function buildInciResearchUserPrompt(params: {
   product_type: string;
   label_ingredients?: string[];
   search_query?: string;
+  match_note?: string;
 }): string {
   const labelBlock =
     params.label_ingredients && params.label_ingredients.length > 0
@@ -110,7 +111,9 @@ export function buildInciResearchUserPrompt(params: {
       : '';
 
   const searchBlock = params.search_query?.trim()
-    ? `\nUser search (may be informal — resolved product below is the best match):\n"${params.search_query.trim()}"\n`
+    ? `\nUser search query (pick INCI for the SKU most relevant to this — not a different variant):\n"${params.search_query.trim()}"${
+        params.match_note ? `\nWhy this SKU was chosen: ${params.match_note}` : ''
+      }\n`
     : '';
 
   return `Retrieve the COMPLETE published INCI list for this product (every ingredient, label order):
